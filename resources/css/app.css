@@ -1,0 +1,94 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+    --primary-color: #7366ff;
+    --secondary-color: #f73164;
+    --success-color: #51bb25;
+    --info-color: #167dff;
+    --warning-color: #ff9f40;
+    --danger-color: #fd2e64;
+    --light-background: #f8f9fe;
+    --sidebar-width: 240px;
+    --header-height: 60px;
+}
+
+body {
+    background-color: var(--light-background);
+    font-family: 'Rubik', sans-serif;
+    color: #2b2b2b;
+}
+
+.cuba-sidebar {
+    width: var(--sidebar-width);
+    background: #fff;
+    box-shadow: 0 0 21px 0 rgba(89, 102, 122, 0.1);
+    height: 100vh;
+    position: fixed;
+    left: 0;
+    top: 0;
+    z-index: 100;
+    transition: 0.5s;
+}
+
+.cuba-header {
+    height: var(--header-height);
+    background: #fff;
+    display: flex;
+    align-items: center;
+    padding: 0 30px;
+    box-shadow: 0 0 21px 0 rgba(89, 102, 122, 0.1);
+    position: sticky;
+    top: 0;
+    z-index: 99;
+}
+
+.cuba-content {
+    margin-left: var(--sidebar-width);
+    padding: 30px;
+    min-height: calc(100vh - var(--header-height));
+}
+
+.nav-item {
+    padding: 12px 25px;
+    display: flex;
+    align-items: center;
+    color: #898989;
+    font-weight: 500;
+    transition: 0.3s;
+    border-radius: 10px;
+    margin: 5px 15px;
+}
+
+.nav-item:hover, .nav-item.active {
+    background: rgba(115, 102, 255, 0.1);
+    color: var(--primary-color);
+}
+
+.nav-item.active {
+    border-left: 4px solid var(--primary-color);
+}
+
+.card {
+    background: #fff;
+    border-radius: 15px;
+    padding: 25px;
+    box-shadow: 0 0 20px rgba(89, 102, 122, 0.05);
+    margin-bottom: 30px;
+}
+
+.btn-primary {
+    background-color: var(--primary-color);
+    border: none;
+    padding: 10px 25px;
+    border-radius: 10px;
+    color: #fff;
+    font-weight: 600;
+    box-shadow: 0 4px 11px rgba(115, 102, 255, 0.35);
+}
+
+.btn-primary:hover {
+    background-color: #5e51e6;
+    transform: translateY(-2px);
+}
