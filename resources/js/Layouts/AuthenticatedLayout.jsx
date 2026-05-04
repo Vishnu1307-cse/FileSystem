@@ -7,15 +7,15 @@ export default function AuthenticatedLayout({ header, children }) {
     const user = usePage().props.auth.user;
     const { url } = usePage();
     const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-    const [isUserMenuOpen, setIsUserMenuOpen] = useState(url.includes('/admin/users'));
+    const [isUserMenuOpen, setIsUserMenuOpen] = useState(url.includes('/manage/users'));
 
     useEffect(() => {
-        if (url.includes('/admin/users')) {
+        if (url.includes('/manage/users')) {
             setIsUserMenuOpen(true);
         }
     }, [url]);
 
-    const dashboardRoute = route().has('admin.dashboard') && user?.role === 'admin' ? route('admin.dashboard') : 
+    const dashboardRoute = route().has('manage.dashboard') && user?.role === 'admin' ? route('manage.dashboard') : 
                            (route().has('employee.dashboard') && ['employee', 'hod'].includes(user?.role) ? route('employee.dashboard') : 
                            (route().has('external.dashboard') ? route('external.dashboard') : '#'));
 
@@ -52,12 +52,12 @@ export default function AuthenticatedLayout({ header, children }) {
                         </Can>
 
                         <Can permission="admin.users">
-                            <div className="text-[10px] font-bold text-gray-400 uppercase px-4 mt-6 mb-2 tracking-widest opacity-70">Administration</div>
+                            <div className="text-[10px] font-bold text-gray-400 uppercase px-4 mt-6 mb-2 tracking-widest opacity-70">System Management</div>
                             
                             <div>
                                 <button 
                                     onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
-                                    className={`nav-item w-full justify-between ${route().current('admin.users') ? 'active' : ''}`}
+                                    className={`nav-item w-full justify-between ${route().current('manage.users') ? 'active' : ''}`}
                                 >
                                     <div className="flex items-center">
                                         <Icon path="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /> 
@@ -67,27 +67,27 @@ export default function AuthenticatedLayout({ header, children }) {
                                 </button>
                                 
                                 <div className={`pl-8 space-y-1 mt-1 transition-all duration-300 overflow-hidden ${isUserMenuOpen ? 'max-h-60 opacity-100' : 'max-h-0 opacity-0'}`}>
-                                    <Link href={route('admin.users', 'internal')} className={`nav-item text-xs py-2 ${usePage().url.includes('/users/internal') ? 'active' : ''}`}>Internal Users</Link>
-                                    <Link href={route('admin.users', 'customer')} className={`nav-item text-xs py-2 ${usePage().url.includes('/users/customer') ? 'active' : ''}`}>Customers</Link>
-                                    <Link href={route('admin.users', 'vendor')} className={`nav-item text-xs py-2 ${usePage().url.includes('/users/vendor') ? 'active' : ''}`}>Vendors</Link>
+                                    <Link href={route('manage.users', 'internal')} className={`nav-item text-xs py-2 ${usePage().url.includes('/manage/users/internal') ? 'active' : ''}`}>Internal Users</Link>
+                                    <Link href={route('manage.users', 'customer')} className={`nav-item text-xs py-2 ${usePage().url.includes('/manage/users/customer') ? 'active' : ''}`}>Customers</Link>
+                                    <Link href={route('manage.users', 'vendor')} className={`nav-item text-xs py-2 ${usePage().url.includes('/manage/users/vendor') ? 'active' : ''}`}>Vendors</Link>
                                 </div>
                             </div>
                         </Can>
 
                         <Can permission="admin.transfers">
-                            <Link href={route('admin.transfers')} className={`nav-item ${route().current('admin.transfers') ? 'active' : ''}`}>
+                            <Link href={route('manage.transfers')} className={`nav-item ${route().current('manage.transfers') ? 'active' : ''}`}>
                                 <Icon path="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 002 2h2a2 2 0 002-2" /> Global Flows
                             </Link>
                         </Can>
 
                         <Can permission="admin.roles">
-                            <Link href={route('admin.roles')} className={`nav-item ${route().current('admin.roles') ? 'active' : ''}`}>
+                            <Link href={route('manage.roles')} className={`nav-item ${route().current('manage.roles') ? 'active' : ''}`}>
                                 <Icon path="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /> Role Management
                             </Link>
                         </Can>
 
                         <Can permission="admin.approval_categories">
-                            <Link href={route('admin.approval_categories')} className={`nav-item ${route().current('admin.approval_categories') ? 'active' : ''}`}>
+                            <Link href={route('manage.approval_categories')} className={`nav-item ${route().current('manage.approval_categories') ? 'active' : ''}`}>
                                 <Icon path="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" /> Approval Table
                             </Link>
                         </Can>

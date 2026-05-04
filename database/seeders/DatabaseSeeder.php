@@ -15,6 +15,7 @@ class DatabaseSeeder extends Seeder
     {
         // First setup RBAC
         $this->call(RolePermissionSeeder::class);
+        $this->call(SiteSettingSeeder::class);
 
         $adminRole = Role::where('slug', 'admin')->first();
         $hodRole = Role::where('slug', 'hod')->first();

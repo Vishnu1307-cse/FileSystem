@@ -26,7 +26,7 @@ export default function Users({ users, hods, availableRoles, filters }) {
 
     const handleSearch = (e) => {
         e.preventDefault();
-        router.get(route('admin.users', filters.role), { search }, {
+        router.get(route('manage.users', filters.role), { search }, {
             preserveState: true,
             replace: true
         });
@@ -43,7 +43,7 @@ export default function Users({ users, hods, availableRoles, filters }) {
 
     const submitCreate = (e) => {
         e.preventDefault();
-        post(route('admin.users.store'), {
+        post(route('manage.users.store'), {
             onSuccess: () => {
                 setShowCreate(false);
                 reset();
@@ -56,14 +56,14 @@ export default function Users({ users, hods, availableRoles, filters }) {
 
     const submitUpdate = (e) => {
         e.preventDefault();
-        patch(route('admin.users.update_role', editingUser.id), {
+        patch(route('manage.users.update_role', editingUser.id), {
             onSuccess: () => setEditingUser(null),
         });
     };
 
     const handleDelete = (id) => {
         if (confirm('Are you sure you want to delete this user?')) {
-            destroy(route('admin.users.delete', id));
+            destroy(route('manage.users.delete', id));
         }
     };
 
@@ -102,6 +102,13 @@ export default function Users({ users, hods, availableRoles, filters }) {
                             />
                         </div>
                         <button type="submit" className="px-4 py-2 bg-indigo-600 text-white rounded-xl font-bold text-xs hover:bg-indigo-700 transition shadow-lg shadow-indigo-100">FIND</button>
+                        <button 
+                            type="button" 
+                            onClick={() => setShowCreate(true)}
+                            className="px-4 py-2 bg-[#51bb25] text-white rounded-xl font-bold text-xs hover:bg-[#45a020] transition shadow-lg shadow-[#51bb2520] whitespace-nowrap"
+                        >
+                            + ADD USER
+                        </button>
                     </form>
                 </div>
 
@@ -204,7 +211,6 @@ export default function Users({ users, hods, availableRoles, filters }) {
                             <tr className="bg-gray-50 border-b border-gray-100">
                                 <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">System User</th>
                                 <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Role</th>
-                                <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Org Structure</th>
                                 <th className="px-6 py-4 text-right text-[10px] font-bold text-gray-400 uppercase tracking-widest">Controls</th>
                             </tr>
                         </thead>
@@ -231,11 +237,6 @@ export default function Users({ users, hods, availableRoles, filters }) {
                                             {u.role?.name || 'No Role'}
                                         </span>
                                     </td>
-                                    <td className="px-6 py-4">
-                                        <div className="text-[10px] font-bold text-gray-400 truncate max-w-[150px]">
-                                            {u.hod ? u.hod.email : (u.role?.slug === 'employee' ? <span className="text-[#ff9f40]">ORPHANED</span> : 'N/A')}
-                                        </div>
-                                    </td>
                                     <td className="px-6 py-4 text-right space-x-4">
                                         <button onClick={() => handleEdit(u)} className="text-[10px] font-bold text-[#7366ff] hover:underline uppercase tracking-widest">Edit</button>
                                         <button onClick={() => handleDelete(u.id)} className="text-[10px] font-bold text-[#fd2e64] hover:underline uppercase tracking-widest">Delete</button>
@@ -244,7 +245,7 @@ export default function Users({ users, hods, availableRoles, filters }) {
                             ))}
                             {users.length === 0 && (
                                 <tr>
-                                    <td colSpan="4" className="px-6 py-20 text-center">
+                                    <td colSpan="3" className="px-6 py-20 text-center">
                                         <div className="text-4xl mb-4 opacity-10">🔍</div>
                                         <p className="text-sm text-gray-400 font-bold uppercase tracking-widest">No matching identities found</p>
                                     </td>

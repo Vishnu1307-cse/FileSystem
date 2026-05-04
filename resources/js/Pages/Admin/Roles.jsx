@@ -37,7 +37,7 @@ export default function Roles({ roles, permissions }) {
     const saveChanges = (roleId) => {
         setSavingRoleId(roleId);
         
-        router.patch(route('admin.roles.update_permissions', roleId), {
+        router.patch(route('manage.roles.update_permissions', roleId), {
             permissions: pendingChanges[roleId]
         }, {
             preserveScroll: true,
@@ -58,7 +58,7 @@ export default function Roles({ roles, permissions }) {
 
     const submitCreate = (e) => {
         e.preventDefault();
-        postCreate(route('admin.roles.store'), {
+        postCreate(route('manage.roles.store'), {
             onSuccess: () => {
                 setShowCreateModal(false);
                 resetCreate();
@@ -68,7 +68,7 @@ export default function Roles({ roles, permissions }) {
 
     const confirmDelete = (role) => {
         if (confirm(`Are you sure you want to delete the "${role.name}" role?`)) {
-            router.delete(route('admin.roles.delete', role.id));
+            router.delete(route('manage.roles.delete', role.id));
         }
     };
 

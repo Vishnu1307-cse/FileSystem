@@ -151,40 +151,47 @@ export default function Show({ transfer, file_info, is_ticket }) {
                                     <div className="text-[10px] text-gray-300 font-bold uppercase">{new Date(transfer.created_at).toLocaleDateString()}</div>
                                 </div>
 
-                                {/* Multi-stage Approvals */}
-                                {transfer.approval_logs?.map((log, index) => (
-                                    <div key={log.id} className="relative flex items-center justify-between gap-4 group">
-                                        <div className="flex items-center gap-4">
-                                            <div className={`h-8 w-8 rounded-full border-4 border-white shadow-sm z-10 shrink-0 flex items-center justify-center text-[10px] text-white font-bold ${
-                                                log.status === 'approved' ? 'bg-green-500' : 'bg-red-500'
-                                            }`}>
-                                                {log.status === 'approved' ? '✓' : '✗'}
-                                            </div>
-                                            <div>
-                                                <div className="text-xs font-bold text-gray-800">
-                                                    Stage {log.step}: {log.status.toUpperCase()}
+                                {/* Multi-stage Approvals from Sequences */}
+                                {transfer.category?.sequences?.sort((a, b) => a.order_position - b.order_position).map((sequence) => {
+                                    const log = transfer.approval_logs?.find(l => l.step === sequence.order_position);
+                                    const isCompleted = !!log;
+                                    const isCurrent = transfer.status === 'pending' && transfer.current_step === sequence.order_position;
+                                    
+                                    return (
+                                        <div key={sequence.id} className="relative flex items-center justify-between gap-4 group mb-8">
+                                            <div className="flex items-center gap-4">
+                                                {isCompleted ? (
+                                                    <div className={`h-8 w-8 rounded-full border-4 border-white shadow-sm z-10 shrink-0 flex items-center justify-center text-[10px] text-white font-bold ${
+                                                        log.status === 'approved' ? 'bg-green-500' : 'bg-red-500'
+                                                    }`}>
+                                                        {log.status === 'approved' ? '✓' : '✗'}
+                                                    </div>
+                                                ) : isCurrent ? (
+                                                    <div className="h-8 w-8 rounded-full bg-yellow-400 border-4 border-white shadow-sm z-10 shrink-0 animate-pulse flex items-center justify-center text-[10px] text-white font-bold">
+                                                        ⏳
+                                                    </div>
+                                                ) : (
+                                                    <div className="h-8 w-8 rounded-full bg-gray-100 border-4 border-white shadow-sm z-10 shrink-0 flex items-center justify-center text-[10px] text-gray-400 font-bold">
+                                                        {sequence.order_position}
+                                                    </div>
+                                                )}
+                                                <div>
+                                                    <div className="text-xs font-bold text-gray-800">
+                                                        Stage {sequence.order_position}: {isCompleted ? log.status.toUpperCase() : (isCurrent ? 'AWAITING APPROVAL' : 'PENDING')}
+                                                    </div>
+                                                    <div className={`text-[10px] font-medium ${isCurrent ? 'text-indigo-600 font-black uppercase tracking-tighter' : 'text-gray-400'}`}>
+                                                        {isCompleted ? `By ${log.user?.name}` : `Assigned: ${sequence.user?.name}`}
+                                                    </div>
                                                 </div>
-                                                <div className="text-[10px] text-gray-400 font-medium">By {log.user.name}</div>
                                             </div>
+                                            {isCompleted && (
+                                                <div className="text-[10px] text-gray-300 font-bold uppercase">
+                                                    {new Date(log.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                </div>
+                                            )}
                                         </div>
-                                        <div className="text-[10px] text-gray-300 font-bold uppercase">
-                                            {new Date(log.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                        </div>
-                                    </div>
-                                ))}
-
-                                {/* Current Pending Stage */}
-                                {transfer.status === 'pending' && transfer.approver && (
-                                    <div className="relative flex items-center justify-between gap-4 group">
-                                        <div className="flex items-center gap-4">
-                                            <div className="h-8 w-8 rounded-full bg-yellow-400 border-4 border-white shadow-sm z-10 shrink-0 animate-pulse" />
-                                            <div>
-                                                <div className="text-xs font-bold text-gray-800 italic">Awaiting Stage {transfer.current_step}</div>
-                                                <div className="text-[10px] text-indigo-600 font-black uppercase tracking-tighter">Current: {transfer.approver.name}</div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                )}
+                                    );
+                                })}
 
                                 {/* Final Resolution */}
                                 {transfer.status !== 'pending' && (

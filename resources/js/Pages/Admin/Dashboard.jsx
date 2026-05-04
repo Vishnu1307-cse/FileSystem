@@ -4,9 +4,9 @@ import { Head, Link } from '@inertiajs/react';
 export default function Dashboard({ stats }) {
     return (
         <AuthenticatedLayout
-            header="Admin Overview"
+            header="Management Overview"
         >
-            <Head title="Admin Dashboard" />
+            <Head title="Management Dashboard" />
 
             <div className="mx-auto w-full px-4 sm:px-6 lg:px-8">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
@@ -36,16 +36,16 @@ export default function Dashboard({ stats }) {
                 <div className="card">
                     <h3 className="text-lg font-bold mb-6 text-gray-800">Management Console</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <Link href={route('admin.users')} className="group p-6 bg-gray-50 rounded-2xl border border-transparent hover:border-[#7366ff50] hover:bg-white hover:shadow-xl transition-all duration-300">
+                        <Link href={route('manage.users')} className="group p-6 bg-gray-50 rounded-2xl border border-transparent hover:border-[#7366ff50] hover:bg-white hover:shadow-xl transition-all duration-300">
                             <div className="flex items-center justify-between mb-4">
                                 <div className="h-12 w-12 rounded-xl bg-white shadow-sm flex items-center justify-center text-xl group-hover:bg-[#7366ff] group-hover:text-white transition">👤</div>
                                 <span className="text-[10px] font-bold text-[#7366ff] bg-[#7366ff10] px-3 py-1 rounded-full uppercase tracking-tighter">Enter Console</span>
                             </div>
                             <h4 className="font-bold text-gray-800 mb-2">User & Role Management</h4>
-                            <p className="text-sm text-gray-500 leading-relaxed">Add new users, assign specialized roles (HOD, Software/Hardware), and manage system access permissions.</p>
+                            <p className="text-sm text-gray-500 leading-relaxed">Add new users, assign specialized roles (HOD, Employee, Vendor, Customer), and manage system access permissions.</p>
                         </Link>
                         
-                        <Link href={route('admin.transfers')} className="group p-6 bg-gray-50 rounded-2xl border border-transparent hover:border-[#7366ff50] hover:bg-white hover:shadow-xl transition-all duration-300">
+                        <Link href={route('manage.transfers')} className="group p-6 bg-gray-50 rounded-2xl border border-transparent hover:border-[#7366ff50] hover:bg-white hover:shadow-xl transition-all duration-300">
                             <div className="flex items-center justify-between mb-4">
                                 <div className="h-12 w-12 rounded-xl bg-white shadow-sm flex items-center justify-center text-xl group-hover:bg-[#7366ff] group-hover:text-white transition">🔍</div>
                                 <span className="text-[10px] font-bold text-[#7366ff] bg-[#7366ff10] px-3 py-1 rounded-full uppercase tracking-tighter">Monitor Flows</span>

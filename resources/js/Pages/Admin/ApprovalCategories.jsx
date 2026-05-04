@@ -15,9 +15,10 @@ export default function ApprovalCategories({ categories, internalUsers }) {
 
     const handleEdit = (category) => {
         setEditingCategory(category);
-        setData({
-            approvers: category.sequences.map(s => ({ user_id: s.user_id }))
-        });
+        setData('approvers', (category.sequences || []).map(s => ({ user_id: s.user_id })));
+        setTimeout(() => {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }, 50);
     };
 
     const addApprover = () => {
@@ -38,7 +39,7 @@ export default function ApprovalCategories({ categories, internalUsers }) {
 
     const submitCreate = (e) => {
         e.preventDefault();
-        post(route('admin.approval_categories.store'), {
+        post(route('manage.approval_categories.store'), {
             onSuccess: () => {
                 setShowCreate(false);
                 reset();
@@ -48,14 +49,14 @@ export default function ApprovalCategories({ categories, internalUsers }) {
 
     const submitUpdateApprovers = (e) => {
         e.preventDefault();
-        patch(route('admin.approval_categories.update_approvers', editingCategory.id), {
+        patch(route('manage.approval_categories.update_approvers', editingCategory.id), {
             onSuccess: () => setEditingCategory(null),
         });
     };
 
     const handleDelete = (id) => {
         if (confirm('Are you sure? This will delete the category and its approval sequences.')) {
-            destroy(route('admin.approval_categories.delete', id));
+            destroy(route('manage.approval_categories.delete', id));
         }
     };
 
@@ -187,7 +188,7 @@ export default function ApprovalCategories({ categories, internalUsers }) {
                                             {i + 1}
                                         </div>
                                         <div className="text-xs font-medium text-gray-600 truncate">
-                                            {s.user.name}
+                                            {s.user?.name ?? <span className="text-red-400 italic">[Deleted User]</span>}
                                         </div>
                                     </div>
                                 ))}

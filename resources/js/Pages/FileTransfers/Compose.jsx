@@ -104,14 +104,49 @@ export default function Compose({ categories }) {
         setData('cc_ids', newCcs.map(u => u.id));
     };
 
+    const [approvers, setApprovers] = useState([{ name: '', email: '' }]);
+
+    const handleApproverChange = (index, field, value) => {
+        const updated = [...approvers];
+        updated[index][field] = value;
+        setApprovers(updated);
+    };
+
+    const addApprover = () => setApprovers([...approvers, { name: '', email: '' }]);
+    const removeApprover = (index) => setApprovers(approvers.filter((_, i) => i !== index));
+
     const submit = (e) => {
         e.preventDefault();
-        post(route('transfers.store'), {
-            onSuccess: () => {
+        
+        if (!data.is_ticket) {
+            // New Mail workflow with dynamic approvers
+            const payload = new FormData();
+            payload.append('receiver', data.receiver_email);
+            if (selectedCcs.length > 0) payload.append('cc', selectedCcs.map(u => u.email).join(', '));
+            payload.append('subject', data.subject);
+            payload.append('body', data.body);
+            if (data.file) payload.append('attachments[]', data.file);
+            
+            payload.append('category_id', data.category_id);
+
+            window.axios.post('/api/mails', payload, {
+                headers: { 'Content-Type': 'multipart/form-data' }
+            }).then(() => {
                 reset();
                 setSelectedCcs([]);
-            },
-        });
+                setApprovers([{ name: '', email: '' }]);
+            }).catch(err => {
+                // handle errors
+            });
+        } else {
+            // Traditional Transfer/Ticket workflow
+            post(route('transfers.store'), {
+                onSuccess: () => {
+                    reset();
+                    setSelectedCcs([]);
+                },
+            });
+        }
     };
 
     return (
@@ -120,7 +155,7 @@ export default function Compose({ categories }) {
         >
             <Head title="Compose Transfer" />
 
-            <div className="mx-auto max-w-5xl">
+            <div className="mx-auto max-w-5xl pb-20">
                 <div className="card shadow-2xl border border-gray-100 p-6 md:p-8">
                     <form onSubmit={submit} className="space-y-6">
                         {/* Header Actions */}
@@ -134,12 +169,12 @@ export default function Compose({ categories }) {
                                 }}
                                 className={`flex-1 py-4 px-6 rounded-2xl border-2 transition-all duration-300 flex items-center justify-center gap-3 ${
                                     !data.is_ticket 
-                                    ? 'border-indigo-600 bg-indigo-50 text-indigo-600 shadow-lg shadow-indigo-100' 
+                                    ? 'border-emerald-600 bg-emerald-50 text-emerald-600 shadow-lg shadow-emerald-100' 
                                     : 'border-gray-50 bg-gray-50 text-gray-400 opacity-60 hover:opacity-100'
                                 }`}
                             >
                                 <Icon path="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" className="w-6 h-6" />
-                                <span className="text-[10px] font-black uppercase tracking-widest">Send Secure Mail</span>
+                                <span className="text-[10px] font-black uppercase tracking-widest">Send Secure Mail (External)</span>
                             </button>
                             <button
                                 type="button"
@@ -155,7 +190,7 @@ export default function Compose({ categories }) {
                                 }`}
                             >
                                 <Icon path="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" className="w-6 h-6 rotate-180" />
-                                <span className="text-[10px] font-black uppercase tracking-widest">Request File Link</span>
+                                <span className="text-[10px] font-black uppercase tracking-widest">Internal File Transfer</span>
                             </button>
                         </div>
 
@@ -312,60 +347,56 @@ export default function Compose({ categories }) {
 
                             {/* Right Panel */}
                             <div className="lg:col-span-5 space-y-6">
-                                <div>
-                                    <InputLabel value="Workflow Architecture" />
+                                <div className="animate-in slide-in-from-right-4 duration-300">
+                                    <InputLabel value="Approval Workflow" />
                                     <select
                                         className="mt-1 block w-full rounded-xl border-gray-100 bg-gray-50/50 text-[11px] font-black focus:ring-indigo-600 focus:border-indigo-600 py-3 uppercase tracking-widest"
                                         value={data.category_id}
                                         onChange={(e) => setData('category_id', e.target.value)}
                                         required
                                     >
-                                        <option value="">Select Workflow Chain</option>
+                                        <option value="">Select Predefined Chain</option>
                                         {categories.map(c => (
                                             <option key={c.id} value={c.id}>{c.name}</option>
                                         ))}
                                     </select>
                                     <p className="text-[9px] text-gray-400 mt-2 font-bold uppercase tracking-widest text-center">
-                                        Mandatory sequential approval stages
+                                        Admin-defined sequential approval stages
                                     </p>
-                                    {errors.category_id && <div className="text-red-500 text-[10px] mt-1 font-bold">{errors.category_id}</div>}
                                 </div>
 
-                                {!data.is_ticket && (
-                                    <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
-                                        <InputLabel value="Secure Payload" />
-                                        <div className="mt-1 flex justify-center px-4 py-6 border-2 border-gray-100 border-dashed rounded-2xl hover:border-indigo-600 transition bg-indigo-50/20 group cursor-pointer relative overflow-hidden">
-                                            <div className="space-y-3 text-center z-10">
-                                                <Icon path="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" className="w-10 h-10 mx-auto text-indigo-400 group-hover:scale-110 transition-transform duration-300" />
-                                                <div className="flex text-sm text-gray-600 justify-center">
-                                                    <label className="relative cursor-pointer bg-indigo-600 px-5 py-2 rounded-xl font-black text-white text-[9px] uppercase tracking-widest shadow-lg shadow-indigo-100">
-                                                        <span>Pick File</span>
-                                                        <input 
-                                                            type="file" 
-                                                            className="sr-only" 
-                                                            onChange={(e) => setData('file', e.target.files[0])}
-                                                            required={!data.is_ticket}
-                                                        />
-                                                    </label>
-                                                </div>
-                                                <p className="text-[8px] text-gray-400 font-black uppercase tracking-tighter">AES-256 GCM Encryption</p>
+                                <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
+                                    <InputLabel value="Secure Payload (Optional)" />
+                                    <div className="mt-1 flex justify-center px-4 py-6 border-2 border-gray-100 border-dashed rounded-2xl hover:border-indigo-600 transition bg-indigo-50/20 group cursor-pointer relative overflow-hidden">
+                                        <div className="space-y-3 text-center z-10">
+                                            <Icon path="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" className="w-10 h-10 mx-auto text-indigo-400 group-hover:scale-110 transition-transform duration-300" />
+                                            <div className="flex text-sm text-gray-600 justify-center">
+                                                <label className="relative cursor-pointer bg-indigo-600 px-5 py-2 rounded-xl font-black text-white text-[9px] uppercase tracking-widest shadow-lg shadow-indigo-100">
+                                                    <span>Pick File</span>
+                                                    <input 
+                                                        type="file" 
+                                                        className="sr-only" 
+                                                        onChange={(e) => setData('file', e.target.files[0])}
+                                                    />
+                                                </label>
                                             </div>
+                                            <p className="text-[8px] text-gray-400 font-black uppercase tracking-tighter">AES-256 GCM Encryption</p>
                                         </div>
-                                        {data.file && (
-                                            <div className="mt-3 p-3 bg-indigo-600 text-white rounded-xl flex items-center justify-between shadow-xl animate-in slide-in-from-top-2">
-                                                <div className="flex items-center gap-2">
-                                                    <Icon path="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" className="w-5 h-5 opacity-70" />
-                                                    <div className="overflow-hidden">
-                                                        <div className="text-[10px] font-black truncate max-w-[140px]">{data.file.name}</div>
-                                                        <div className="text-[8px] font-bold opacity-60">{(data.file.size / 1024 / 1024).toFixed(2)} MB</div>
-                                                    </div>
-                                                </div>
-                                                <button type="button" onClick={() => setData('file', null)} className="h-6 w-6 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition">&times;</button>
-                                            </div>
-                                        )}
-                                        {errors.file && <div className="text-red-500 text-[10px] mt-1 font-bold">{errors.file}</div>}
                                     </div>
-                                )}
+                                    {data.file && (
+                                        <div className="mt-3 p-3 bg-indigo-600 text-white rounded-xl flex items-center justify-between shadow-xl animate-in slide-in-from-top-2">
+                                            <div className="flex items-center gap-2">
+                                                <Icon path="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" className="w-5 h-5 opacity-70" />
+                                                <div className="overflow-hidden">
+                                                    <div className="text-[10px] font-black truncate max-w-[140px]">{data.file.name}</div>
+                                                    <div className="text-[8px] font-bold opacity-60">{(data.file.size / 1024 / 1024).toFixed(2)} MB</div>
+                                                </div>
+                                            </div>
+                                            <button type="button" onClick={() => setData('file', null)} className="h-6 w-6 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition">&times;</button>
+                                        </div>
+                                    )}
+                                    {errors.file && <div className="text-red-500 text-[10px] mt-1 font-bold">{errors.file}</div>}
+                                </div>
 
                                 <div>
                                     <InputLabel value="Private Comments" />
@@ -381,7 +412,7 @@ export default function Compose({ categories }) {
                                     <button
                                         type="submit"
                                         disabled={processing}
-                                        className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-black text-[11px] uppercase tracking-[0.2em] hover:bg-indigo-700 transition shadow-2xl shadow-indigo-200 active:scale-[0.98]"
+                                        className={`w-full py-4 ${data.is_ticket ? 'bg-indigo-600' : 'bg-emerald-600'} text-white rounded-2xl font-black text-[11px] uppercase tracking-[0.2em] transition shadow-2xl active:scale-[0.98]`}
                                     >
                                         {processing ? 'Processing...' : 'Initiate Approval Flow'}
                                     </button>

@@ -10,7 +10,7 @@ use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Mail;
-use App\Mail\FileTransferRequestMail;
+use App\Mail\ApproverActionRequiredMail;
 use App\Mail\FileTransferApprovedMail;
 use App\Mail\FileTransferRejectedMail;
 use Illuminate\Support\Facades\Auth;
@@ -70,7 +70,7 @@ class FileRequestController extends Controller
         }
 
         // Notify first approver
-        Mail::to($transfer->approver->email)->send(new FileTransferRequestMail($transfer));
+        Mail::to($transfer->approver->email)->send(new ApproverActionRequiredMail($transfer));
 
         // External Callback Notification
         $this->notifyExternalService($transfer);
@@ -80,19 +80,43 @@ class FileRequestController extends Controller
 
     private function notifyExternalService($transfer)
     {
-        $apiUrl = config('services.external.api_url');
-        if (!$apiUrl) return;
+        $setting = \App\Models\SiteSetting::first();
+        if (!$setting || !$setting->is_external_api_enabled || empty($setting->api_url)) {
+            return;
+        }
 
         try {
-            Http::timeout(5)->post($apiUrl, [
-                'mail_id' => $transfer->id,
-                'subject' => $transfer->subject,
-                'body' => $transfer->body,
-                'download_link' => URL::signedRoute('transfers.download', ['id' => $transfer->id]),
-                'sender_email' => $transfer->sender->email,
-                'receiver_email' => $transfer->receiver->email,
-                'status' => 'pending_approval'
-            ]);
+            // Build approvers list from category sequences
+            $approvers = $transfer->category->sequences->map(function($seq) {
+                return [
+                    'name' => $seq->user->name,
+                    'email' => $seq->user->email,
+                    'order' => $seq->order_position,
+                ];
+            })->toArray();
+
+            $response = Http::withHeaders(['X-API-KEY' => $setting->api_key])
+                ->timeout(5)
+                ->post($setting->api_url, [
+                    'title'        => $transfer->subject,
+                    'description'  => Str::limit(strip_tags($transfer->body), 300),
+                    'approval_type' => 'SEQUENTIAL',
+                    'id'           => $transfer->id,
+                    'metadata'     => [
+                        'sender'   => $transfer->sender->name ?? 'Unknown',
+                        'receiver' => $transfer->receiver->email ?? 'Unknown',
+                        'subject'  => $transfer->subject,
+                        'body'     => $transfer->body . "\n\nApproval Flow:\n" . implode("\n", array_map(function($a) {
+                            return "Level {$a['order']}: {$a['name']} ({$a['email']})";
+                        }, $approvers)),
+                    ],
+                    'callback_url' => url('/api/transfers/' . $transfer->id . '/status-update'),
+                    'approvers'    => $approvers,
+                ]);
+
+            if (!$response->successful()) {
+                \Log::error("External API notification failed: " . $response->body());
+            }
         } catch (\Exception $e) {
             \Log::error("External API notification failed: " . $e->getMessage());
         }
@@ -118,8 +142,8 @@ class FileRequestController extends Controller
 
     public function show($id)
     {
-        $transfer = FileRequest::with(['sender', 'receiver', 'approver', 'logs.user', 'category.sequences.user'])->find($id) 
-                 ?? TicketRequest::with(['sender', 'receiver', 'approver', 'logs.user', 'category.sequences.user'])->findOrFail($id);
+        $transfer = FileRequest::with(['sender', 'receiver', 'approver', 'approvalLogs.user', 'category.sequences.user'])->find($id) 
+                 ?? TicketRequest::with(['sender', 'receiver', 'approver', 'approvalLogs.user', 'category.sequences.user'])->findOrFail($id);
         
         return Inertia::render('FileTransfers/Show', [
             'transfer' => $transfer
@@ -151,7 +175,7 @@ class FileRequestController extends Controller
                 'approver_id' => $nextStep->user_id,
                 'current_step' => $transfer->current_step + 1
             ]);
-            Mail::to($transfer->approver->email)->send(new FileTransferRequestMail($transfer));
+            Mail::to($transfer->approver->email)->send(new ApproverActionRequiredMail($transfer));
         } else {
             $transfer->update([
                 'status' => 'approved',
