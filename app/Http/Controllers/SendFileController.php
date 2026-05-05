@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Mail;
 use App\Models\SentMail;
 use App\Models\MailApprovalTracker;
 use App\Services\SendFileApprovalService;
@@ -46,19 +47,22 @@ class SendFileController extends Controller
         $storedPaths = [];
         if ($request->hasFile('attachments')) {
             foreach ($request->file('attachments') as $file) {
-                $path = Storage::disk('local')->putFile('mail_attachments', $file);
+                $filename = uniqid() . '_' . preg_replace('/[^A-Za-z0-9.\-_]/', '_', $file->getClientOriginalName());
+                $path = Storage::disk('local')->putFileAs('mail_attachments', $file, $filename);
                 $storedPaths[] = $path;
             }
         }
 
         $sentMail = SentMail::create([
             'sender_id'            => auth()->id(),
+            'type'                 => $request->input('type', 'send'),
             'receiver'             => $request->receiver,
             'cc'                   => $request->cc,
             'subject'              => $request->subject,
             'body'                 => $request->body,
             'attachments'          => $storedPaths,
             'overall_status'       => 'pending',
+            'upload_status'        => $request->input('type') === 'request' ? 'awaiting' : 'none',
             'approval_table_name'  => $request->approval_table_name,
         ]);
 
@@ -77,6 +81,8 @@ class SendFileController extends Controller
                     'last_approved'=> null,
                 ]);
             }
+
+            // Mail will be sent by WebhookController or FileRequestController upon final approval
 
             return response()->json([
                 'message' => 'Submitted successfully.',

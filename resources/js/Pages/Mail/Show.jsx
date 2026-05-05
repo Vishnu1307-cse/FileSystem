@@ -46,7 +46,7 @@ export default function Show({ mail }) {
                             <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4">Attachments</h3>
                             <div className="flex flex-wrap gap-4">
                                 {mail.attachments.map((path, index) => {
-                                    const filename = path.split('/').pop();
+                                    const filename = path.split('/').pop().replace(/^[0-9a-f]{13}_/, '');
                                     return (
                                         <a key={index} href={route('mails.download', { mail: mail.id, index })} className="flex items-center gap-3 p-3 bg-white border border-gray-200 rounded-xl hover:border-indigo-500 hover:shadow-md transition group">
                                             <div className="h-10 w-10 bg-indigo-50 rounded-lg flex items-center justify-center text-indigo-500 group-hover:bg-indigo-600 group-hover:text-white transition">

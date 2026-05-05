@@ -5,13 +5,21 @@ export default function Approvals({ approvals }) {
     const { props } = usePage();
     const { post, processing } = useForm();
 
-    const handleApprove = (id) => {
-        post(route('transfers.approve', id));
+    const handleApprove = (approval) => {
+        if (approval.source_type === 'sent_mail') {
+            post(route('mail-approvals.approve', approval.id));
+        } else {
+            post(route('transfers.approve', approval.id));
+        }
     };
 
-    const handleReject = (id) => {
+    const handleReject = (approval) => {
         if (confirm('Are you sure you want to reject this transfer? The flow will be terminated immediately.')) {
-            post(route('transfers.reject', id));
+            if (approval.source_type === 'sent_mail') {
+                post(route('mail-approvals.reject', approval.id));
+            } else {
+                post(route('transfers.reject', approval.id));
+            }
         }
     };
 
@@ -53,13 +61,15 @@ export default function Approvals({ approvals }) {
                             </thead>
                             <tbody className="divide-y divide-gray-50">
                                 {approvals.map((approval) => (
-                                    <tr key={approval.id} className="hover:bg-indigo-50/30 transition-all duration-300 group">
+                                    <tr key={`${approval.source_type}-${approval.id}`} className="hover:bg-indigo-50/30 transition-all duration-300 group">
                                         <td className="px-8 py-6">
                                             <div className="flex flex-col gap-2">
                                                 <span className={`w-fit px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest ${
-                                                    approval.is_ticket ? 'bg-orange-100 text-orange-600' : 'bg-indigo-100 text-indigo-600'
+                                                    approval.source_type === 'sent_mail' 
+                                                        ? (approval.type === 'request' ? 'bg-amber-100 text-amber-600' : 'bg-emerald-100 text-emerald-600')
+                                                        : (approval.is_ticket ? 'bg-orange-100 text-orange-600' : 'bg-indigo-100 text-indigo-600')
                                                 }`}>
-                                                    {approval.category?.name || 'Standard'}
+                                                    {approval.source_type === 'sent_mail' ? approval.category_name : (approval.category?.name || 'Standard')}
                                                 </span>
                                                 <div className="flex items-center gap-2">
                                                     <span className="h-5 w-5 rounded-full bg-gray-100 text-gray-400 text-[8px] font-black flex items-center justify-center">
@@ -81,7 +91,9 @@ export default function Approvals({ approvals }) {
                                                 <div className="flex items-center gap-3">
                                                     <div className="h-2 w-2 rounded-full bg-indigo-600 shadow-sm shadow-indigo-100" />
                                                     <div>
-                                                        <div className="text-xs font-bold text-gray-800 leading-none">{approval.receiver?.name}</div>
+                                                        <div className="text-xs font-bold text-gray-800 leading-none">
+                                                            {approval.source_type === 'sent_mail' ? approval.receiver_email : (approval.receiver?.name || 'External')}
+                                                        </div>
                                                         <div className="text-[9px] text-gray-400 font-medium uppercase mt-1">Recipient</div>
                                                     </div>
                                                 </div>
@@ -89,35 +101,46 @@ export default function Approvals({ approvals }) {
                                         </td>
                                         <td className="px-8 py-6">
                                             <div className="flex flex-col gap-1">
-                                                <div className="text-xs font-bold text-gray-800 truncate max-w-[150px]">
-                                                    {approval.is_ticket ? 'INBOUND REQUEST' : (approval.file_path || 'ENCRYPTED_BLOB')}
+                                                <div className="text-xs font-bold text-gray-800 truncate max-w-[200px]">
+                                                    {approval.subject}
                                                 </div>
                                                 <div className="text-[10px] text-gray-400 font-bold uppercase tracking-tighter italic">
-                                                    {approval.message ? `"${approval.message.substring(0, 30)}..."` : 'NO CONTEXT PROVIDED'}
+                                                    {approval.source_type === 'sent_mail' 
+                                                        ? (approval.type === 'request' ? 'OUTBOUND FILE REQUEST' : 'OUTBOUND FILE TRANSMISSION')
+                                                        : (approval.is_ticket ? 'INBOUND REQUEST' : (approval.file_path || 'ENCRYPTED_BLOB'))}
                                                 </div>
                                             </div>
                                         </td>
                                         <td className="px-8 py-6 text-right space-x-4">
                                             <button 
-                                                onClick={() => handleApprove(approval.id)} 
+                                                onClick={() => handleApprove(approval)} 
                                                 disabled={processing}
                                                 className="px-6 py-2 bg-green-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-green-100 hover:bg-green-700 transition active:scale-95 disabled:opacity-50"
                                             >
                                                 Approve
                                             </button>
                                             <button 
-                                                onClick={() => handleReject(approval.id)} 
+                                                onClick={() => handleReject(approval)} 
                                                 disabled={processing}
                                                 className="px-6 py-2 bg-red-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-red-100 hover:bg-red-700 transition active:scale-95 disabled:opacity-50"
                                             >
                                                 Reject
                                             </button>
-                                            <Link 
-                                                href={route('transfers.show', approval.id)}
-                                                className="px-4 py-2 bg-gray-100 text-gray-400 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-gray-200 transition"
-                                            >
-                                                Details
-                                            </Link>
+                                            {approval.source_type === 'legacy' ? (
+                                                <Link 
+                                                    href={route('transfers.show', approval.id)}
+                                                    className="px-4 py-2 bg-gray-100 text-gray-400 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-gray-200 transition"
+                                                >
+                                                    Details
+                                                </Link>
+                                            ) : (
+                                                <Link 
+                                                    href={route('mail-approvals.edit', approval.id)}
+                                                    className="px-4 py-2 bg-indigo-100 text-indigo-600 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-indigo-200 transition"
+                                                >
+                                                    Review & Edit
+                                                </Link>
+                                            )}
                                         </td>
                                     </tr>
                                 ))}

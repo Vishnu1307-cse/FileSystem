@@ -3,8 +3,11 @@
 <head>
     <title>Your OTP Code</title>
 </head>
-<body style="font-family: Arial, sans-serif; color: #333;">
-    <h2>Secure Login Verification</h2>
+<body style="font-family: Arial, sans-serif; color: #333; max-width: 600px; margin: 0 auto; border: 1px solid #eee; padding: 20px; border-radius: 12px;">
+    <div style="text-align: center; margin-bottom: 20px;">
+        <img src="{{ $message->embed(public_path('image.png')) }}" alt="Pricol Logo" style="height: 50px;">
+    </div>
+    <h2 style="text-align: center; color: #4f46e5;">Secure Login Verification</h2>
     <p>You have requested a one-time password to access the Secure File Sharing System.</p>
     
     <div style="background-color: #f3f4f6; padding: 20px; border-radius: 8px; text-align: center; margin: 20px 0;">

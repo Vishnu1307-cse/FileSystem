@@ -12,11 +12,18 @@
 <body>
     <div class="container">
         <div class="header">
-            <h2>{{ $sentMail->subject }}</h2>
+            <img src="{{ $message->embed(public_path('image.png')) }}" alt="Pricol Logo" style="height: 50px;">
+            <h2 style="margin-top: 15px;">{{ $sentMail->subject }}</h2>
         </div>
         
         <div class="body-content">
             {!! nl2br(e($sentMail->body)) !!}
+        </div>
+
+        <div style="margin-top: 30px; text-align: center;">
+            <a href="{{ url('/external/login') }}" style="background: #4f46e5; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block; font-size: 14px;">
+                {{ $sentMail->type === 'request' ? 'Upload Requested File' : 'Access Your Portal' }}
+            </a>
         </div>
 
         <div class="footer">

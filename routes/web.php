@@ -61,6 +61,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::get('/mails/{mail}', [\App\Http\Controllers\MailController::class, 'show'])->name('mails.show');
     Route::post('/api/mails', [\App\Http\Controllers\MailController::class, 'store'])->name('mails.store');
+    Route::post('/send-files', [\App\Http\Controllers\SendFileController::class, 'store'])->name('send-files.store');
     Route::get('/mails/{mail}/download/{index}', [\App\Http\Controllers\MailController::class, 'download'])->name('mails.download');
 
     Route::post('/transfers/{transfer}/approve', [\App\Http\Controllers\FileRequestController::class, 'approve'])->name('transfers.approve')->middleware('permission:approvals.view');
@@ -74,8 +75,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Profile & Inbox
     Route::get('/inbox', [\App\Http\Controllers\InboxController::class, 'index'])->name('inbox.index')->middleware('permission:inbox.view');
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
-    Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
-    Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+    Route::post('/transfers/{id}/approve', [\App\Http\Controllers\FileRequestController::class, 'approve'])->name('transfers.approve');
+    Route::post('/transfers/{id}/reject', [\App\Http\Controllers\FileRequestController::class, 'reject'])->name('transfers.reject');
+
+    // Mail Portal Approvals
+    Route::get('/mail-approvals/{id}', [\App\Http\Controllers\FileRequestController::class, 'editMail'])->name('mail-approvals.edit');
+    Route::put('/mail-approvals/{id}', [\App\Http\Controllers\FileRequestController::class, 'updateMail'])->name('mail-approvals.update');
+    Route::post('/mail-approvals/{id}/approve', [\App\Http\Controllers\FileRequestController::class, 'approveMail'])->name('mail-approvals.approve');
+    Route::post('/mail-approvals/{id}/reject', [\App\Http\Controllers\FileRequestController::class, 'rejectMail'])->name('mail-approvals.reject');
 
     // Management/Global Flow features (Permission Based)
     Route::get('/manage/dashboard', [AdminController::class, 'dashboard'])->name('manage.dashboard')->middleware('permission:dashboard.view');
@@ -129,6 +136,9 @@ Route::middleware('external.auth')->group(function () {
     Route::post('/external/mails/{id}/download',
          [ExternalPortalController::class, 'download'])
          ->name('external.download');
+    Route::post('/external/mails/{id}/upload',
+         [ExternalPortalController::class, 'submitUpload'])
+         ->name('external.upload.submit');
     Route::post('/external/logout', [ExternalAuthController::class, 'logout'])
          ->name('external.logout');
 });

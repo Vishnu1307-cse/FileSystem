@@ -13,38 +13,51 @@ class DashboardController extends Controller
     {
         $user = $request->user();
 
-        $sentFiles = FileRequest::where('sender_id', $user->id)->get();
-        $sentTickets = TicketRequest::where('sender_id', $user->id)->get();
-        $allSent = $sentFiles->concat($sentTickets);
+        // 1. Calculate combined Outbound Stats (Legacy + New)
+        $legacySent = \App\Models\FileRequest::where('sender_id', $user->id)->get()
+            ->concat(\App\Models\TicketRequest::where('sender_id', $user->id)->get());
+        
+        $newSent = \App\Models\SentMail::where('sender_id', $user->id)->get();
 
-        $sentStats = [
-            'total' => $allSent->count(),
-            'pending' => $allSent->where('status', 'pending')->count(),
-            'approved' => $allSent->where('status', 'approved')->count(),
-            'rejected' => $allSent->where('status', 'rejected')->count(),
+        $stats = [
+            'total'    => $legacySent->count() + $newSent->count(),
+            'pending'  => $legacySent->where('status', 'pending')->count() + $newSent->where('overall_status', 'pending')->count(),
+            'approved' => $legacySent->where('status', 'approved')->count() + $newSent->where('overall_status', 'approved')->count(),
+            'rejected' => $legacySent->where('status', 'rejected')->count() + $newSent->where('overall_status', 'rejected')->count(),
         ];
 
-        // Approval stats for specialists/HOD
-        $pendingApprovalsCount = FileRequest::where('approver_id', $user->id)->where('status', 'pending')->count() +
-                               TicketRequest::where('approver_id', $user->id)->where('status', 'pending')->count();
+        // 2. Combined Inbound Stats (Employees receiving from others)
+        $receivedTotal = \App\Models\FileRequest::where('receiver_id', $user->id)->count() + 
+                         \App\Models\TicketRequest::where('receiver_id', $user->id)->count() +
+                         \App\Models\SentMail::where('receiver', $user->email)->count();
 
-        $receivedTotal = FileRequest::where('receiver_id', $user->id)->count() + 
-                         TicketRequest::where('receiver_id', $user->id)->count();
+        // 3. Pending Approvals (Action Required)
+        $pendingApprovalsCount = \App\Models\FileRequest::where('approver_id', $user->id)->where('status', 'pending')->count() +
+                                \App\Models\TicketRequest::where('approver_id', $user->id)->where('status', 'pending')->count() +
+                                \App\Models\MailApprovalTracker::where('email', $user->email)->where('status', 'pending')->count();
 
-        $recentLogs = $allSent->sortByDesc('updated_at')->take(10)->values()->map(function ($item) {
-            if ($item instanceof \App\Models\FileRequest && $item->status === 'approved' && $item->secure_token) {
-                $item->download_url = \Illuminate\Support\Facades\URL::signedRoute('transfers.download', ['id' => $item->id]);
-            }
-            return $item;
-        });
-        // Manually load relations for recentLogs since it's an aggregated collection
-        $recentLogs->load(['receiver:id,name']);
+        // 4. Recent Outbound Activity for the table
+        $recentMails = \App\Models\SentMail::where('sender_id', $user->id)
+            ->withCount([
+                'externalLogs as view_count' => function ($query) {
+                    $query->where('action', 'viewed');
+                },
+                'externalLogs as download_count' => function ($query) {
+                    $query->where('action', 'downloaded');
+                },
+                'externalLogs as upload_count' => function ($query) {
+                    $query->where('action', 'uploaded');
+                }
+            ])
+            ->latest()
+            ->take(10)
+            ->get();
 
         return Inertia::render('EmployeeDashboard', [
-            'sentStats' => $sentStats,
+            'sentStats' => $stats,
             'receivedTotal' => $receivedTotal,
             'pendingApprovalsCount' => $pendingApprovalsCount,
-            'recentLogs' => $recentLogs
+            'recentLogs' => $recentMails
         ]);
     }
 

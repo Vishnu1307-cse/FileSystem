@@ -31,23 +31,23 @@ class SentMailApprovedMail extends Mailable
 
     public function content(): Content
     {
+        $loginUrl = url('/external/login');
+        $content = $this->sentMail->type === 'request'
+            ? "Hello,\n\nAn employee has requested a file from you.\n\nSubject: {$this->sentMail->subject}\n\nPlease log in to the portal to upload the requested file.\n\nUse your registered email address to log in with a one-time code."
+            : "Hello,\n\nA file has been sent to you.\n\nSubject: {$this->sentMail->subject}\n\nIn order to view it, please log in to the portal using the button below.";
+
         return new Content(
-            view: 'emails.sent_mail_approved',
+            view: 'emails.generic_notification',
+            with: [
+                'content' => $content,
+                'actionUrl' => $loginUrl,
+                'actionText' => $this->sentMail->type === 'request' ? 'Upload File' : 'Access Portal',
+            ]
         );
     }
 
     public function attachments(): array
     {
-        $attachments = [];
-        
-        if ($this->sentMail->attachments && is_array($this->sentMail->attachments)) {
-            foreach ($this->sentMail->attachments as $path) {
-                if (Storage::disk('local')->exists($path)) {
-                    $attachments[] = Attachment::fromPath(Storage::disk('local')->path($path));
-                }
-            }
-        }
-        
-        return $attachments;
+        return [];
     }
 }

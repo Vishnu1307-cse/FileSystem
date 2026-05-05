@@ -36,14 +36,12 @@ export default function EmployeeDashboard({ sentStats, receivedTotal, pendingApp
                         color="border-yellow-600" 
                         icon={<svg className="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>}
                     />
-                    {['software', 'hardware', 'hod'].includes(user.super_role) && (
-                        <StatCard 
-                            title="Action Required" 
-                            value={pendingApprovalsCount} 
-                            color="border-red-600" 
-                            icon={<svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>}
-                        />
-                    )}
+                    <StatCard 
+                        title="Rejected" 
+                        value={sentStats.rejected} 
+                        color="border-red-500" 
+                        icon={<svg className="w-6 h-6 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>}
+                    />
                     <StatCard 
                         title="Total Received" 
                         value={receivedTotal} 
@@ -81,19 +79,23 @@ export default function EmployeeDashboard({ sentStats, receivedTotal, pendingApp
                                 {recentLogs.map((log) => (
                                     <tr key={log.id} className="hover:bg-gray-50 transition-colors">
                                         <td className="px-6 py-4">
-                                            <div className="text-sm font-bold text-gray-800">{log.receiver?.email || 'Unknown'}</div>
-                                            <div className="text-[10px] text-gray-400 uppercase font-bold">{log.receiver?.name}</div>
+                                            <div className="text-sm font-bold text-gray-800">{log.receiver}</div>
+                                            <div className="text-[10px] text-gray-400 uppercase font-bold truncate max-w-[200px]">{log.subject}</div>
                                         </td>
                                         <td className="px-6 py-4">
                                             <span className={`px-2.5 py-1 rounded-full text-[9px] font-bold uppercase tracking-tighter ${
-                                                log.status === 'approved' ? 'bg-green-100 text-green-700' :
-                                                log.status === 'rejected' ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700'
+                                                log.overall_status === 'approved' ? 'bg-green-100 text-green-700' :
+                                                log.overall_status === 'rejected' ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700'
                                             }`}>
-                                                {log.status}
+                                                {log.overall_status}
                                             </span>
                                         </td>
                                         <td className="px-6 py-4">
-                                            <span className="text-[10px] font-bold text-gray-500 uppercase">{log.is_ticket ? 'Ticket' : 'File'}</span>
+                                            <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded ${
+                                                log.type === 'request' ? 'bg-indigo-50 text-indigo-600' : 'bg-emerald-50 text-emerald-600'
+                                            }`}>
+                                                {log.type}
+                                            </span>
                                         </td>
                                         <td className="px-6 py-4">
                                             <div className="flex gap-4">
@@ -101,14 +103,24 @@ export default function EmployeeDashboard({ sentStats, receivedTotal, pendingApp
                                                     <div className="text-xs font-bold text-gray-700">{log.view_count || 0}</div>
                                                     <div className="text-[9px] text-gray-400 uppercase font-bold">Views</div>
                                                 </div>
-                                                <div className="text-center border-l pl-4">
-                                                    <div className="text-xs font-bold text-gray-700">{log.download_count || 0}</div>
-                                                    <div className="text-[9px] text-gray-400 uppercase font-bold">DLS</div>
-                                                </div>
+                                                {log.type === 'send' && (
+                                                    <div className="text-center border-l pl-4">
+                                                        <div className="text-xs font-bold text-gray-700">{log.download_count || 0}</div>
+                                                        <div className="text-[9px] text-gray-400 uppercase font-bold">Downloads</div>
+                                                    </div>
+                                                )}
+                                                {log.type === 'request' && (
+                                                    <div className="text-center border-l pl-4">
+                                                        <div className={`text-xs font-bold ${log.upload_status === 'uploaded' ? 'text-green-600' : 'text-gray-700'}`}>
+                                                            {log.upload_status === 'uploaded' ? 'YES' : 'NO'}
+                                                        </div>
+                                                        <div className="text-[9px] text-gray-400 uppercase font-bold">Uploaded</div>
+                                                    </div>
+                                                )}
                                             </div>
                                         </td>
                                         <td className="px-6 py-4 text-right">
-                                            <Link href={route('transfers.show', log.id)} className="text-[10px] font-bold text-indigo-600 hover:underline uppercase tracking-widest">Details</Link>
+                                            <Link href={route('mails.show', log.id)} className="text-[10px] font-bold text-indigo-600 hover:underline uppercase tracking-widest">Details</Link>
                                         </td>
                                     </tr>
                                 ))}

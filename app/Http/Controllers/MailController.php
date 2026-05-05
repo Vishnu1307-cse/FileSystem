@@ -43,7 +43,8 @@ class MailController extends Controller
 
         if ($request->hasFile('attachments')) {
             foreach ($request->file('attachments') as $file) {
-                $path = Storage::disk('local')->putFile('mail_attachments', $file);
+                $filename = uniqid() . '_' . preg_replace('/[^A-Za-z0-9.\-_]/', '_', $file->getClientOriginalName());
+                $path = Storage::disk('local')->putFileAs('mail_attachments', $file, $filename);
                 $storedPaths[] = $path;
             }
         }
@@ -95,6 +96,10 @@ class MailController extends Controller
             abort(404);
         }
 
-        return Storage::disk('local')->download($attachments[$index]);
+        $path = $attachments[$index];
+        $filename = basename($path);
+        $cleanName = preg_replace('/^[0-9a-f]{13}_/', '', $filename);
+
+        return Storage::disk('local')->download($path, $cleanName);
     }
 }

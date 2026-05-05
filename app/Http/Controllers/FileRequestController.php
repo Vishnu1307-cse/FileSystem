@@ -125,18 +125,56 @@ class FileRequestController extends Controller
     public function approvalsIndex()
     {
         $user = Auth::user();
+        
+        // Legacy approvals
         $fileApprovals = FileRequest::with(['sender', 'receiver', 'category'])
             ->where('approver_id', $user->id)
             ->where('status', 'pending')
-            ->get();
+            ->get()
+            ->map(function($item) {
+                $item->source_type = 'legacy';
+                return $item;
+            });
         
         $ticketApprovals = TicketRequest::with(['sender', 'receiver', 'category'])
             ->where('approver_id', $user->id)
             ->where('status', 'pending')
-            ->get();
+            ->get()
+            ->map(function($item) {
+                $item->source_type = 'legacy';
+                return $item;
+            });
+
+        // New SentMail approvals with sequential enforcement
+        $mailApprovals = \App\Models\MailApprovalTracker::with(['sentMail.sender'])
+            ->where('email', $user->email)
+            ->where('status', 'pending')
+            ->whereNotExists(function ($query) {
+                $query->select(\Illuminate\Support\Facades\DB::raw(1))
+                      ->from('mail_approval_trackers as prev')
+                      ->whereColumn('prev.mid', 'mail_approval_trackers.mid')
+                      ->whereColumn('prev.level', '<', 'mail_approval_trackers.level')
+                      ->where('prev.status', 'pending');
+            })
+            ->get()
+            ->map(function($tracker) {
+                return [
+                    'id' => $tracker->id,
+                    'mid' => $tracker->mid,
+                    'mail_id' => $tracker->mail_id, // The external tracking code
+                    'source_type' => 'sent_mail',
+                    'subject' => $tracker->sentMail->subject,
+                    'sender' => $tracker->sentMail->sender,
+                    'receiver_email' => $tracker->sentMail->receiver,
+                    'current_step' => $tracker->level,
+                    'category_name' => $tracker->sentMail->approval_table_name,
+                    'type' => $tracker->sentMail->type,
+                    'created_at' => $tracker->created_at,
+                ];
+            });
 
         return Inertia::render('FileTransfers/Approvals', [
-            'approvals' => $fileApprovals->concat($ticketApprovals)
+            'approvals' => $fileApprovals->concat($ticketApprovals)->concat($mailApprovals)
         ]);
     }
 
@@ -209,6 +247,158 @@ class FileRequestController extends Controller
         Mail::to($transfer->sender->email)->send(new FileTransferRejectedMail($transfer));
 
         return back()->with('success', 'Transfer rejected.');
+    }
+
+    private function saveMailData(Request $request, $tracker)
+    {
+        $request->validate([
+            'subject' => 'required|string|max:255',
+            'body' => 'required|string',
+            'removed_attachments' => 'nullable|array',
+            'new_files.*' => 'nullable|file',
+        ]);
+
+        $sentMail = \App\Models\SentMail::findOrFail($tracker->mid);
+        $currentAttachments = $sentMail->attachments ?? [];
+        $removedAttachments = $request->removed_attachments ?? [];
+        $newFiles = $request->file('new_files') ?? [];
+
+        // Check the constraint: at least 1 file must remain
+        $remainingCount = count($currentAttachments) - count($removedAttachments) + count($newFiles);
+        if ($remainingCount < 1) {
+            abort(422, 'You must leave at least one file attached to this request.');
+        }
+
+        // Process removals
+        $finalAttachments = [];
+        foreach ($currentAttachments as $attachment) {
+            if (in_array($attachment, $removedAttachments)) {
+                // Delete physical file
+                \Illuminate\Support\Facades\Storage::disk('local')->delete($attachment);
+            } else {
+                $finalAttachments[] = $attachment;
+            }
+        }
+
+        // Process new files
+        foreach ($newFiles as $file) {
+            $filename = uniqid() . '_' . preg_replace('/[^A-Za-z0-9.\-_]/', '_', $file->getClientOriginalName());
+            $path = \Illuminate\Support\Facades\Storage::disk('local')->putFileAs('mail_attachments', $file, $filename);
+            $finalAttachments[] = $path;
+        }
+
+        $sentMail->update([
+            'subject' => $request->subject,
+            'body' => $request->body,
+            'attachments' => $finalAttachments,
+        ]);
+
+        return $sentMail;
+    }
+
+    public function approveMail(Request $request, $id)
+    {
+        $tracker = \App\Models\MailApprovalTracker::findOrFail($id);
+        if ($tracker->email !== Auth::user()->email) {
+            abort(403);
+        }
+
+        // Save any edits made on the review screen before approving
+        if ($request->has('subject')) {
+            $this->saveMailData($request, $tracker);
+        }
+
+        $tracker->update([
+            'status' => 'approved',
+            'last_approved' => now()
+        ]);
+
+        // Check if there are other pending approvers for this mail
+        $pendingCount = \App\Models\MailApprovalTracker::where('mid', $tracker->mid)
+            ->where('status', 'pending')
+            ->count();
+
+        if ($pendingCount === 0) {
+            $sentMail = \App\Models\SentMail::with('sender')->findOrFail($tracker->mid);
+            $sentMail->update(['overall_status' => 'approved']);
+            
+            // Send the actual mail to the receiver
+            Mail::to($sentMail->receiver)->send(new \App\Mail\SentMailApprovedMail($sentMail));
+            
+            return redirect()->route('transfers.approvals')->with('success', 'Mail fully approved and sent to recipient.');
+        }
+
+        return redirect()->route('transfers.approvals')->with('success', 'Approval recorded. Waiting for other approvers.');
+    }
+
+    public function rejectMail(Request $request, $id)
+    {
+        $tracker = \App\Models\MailApprovalTracker::findOrFail($id);
+        if ($tracker->email !== Auth::user()->email) {
+            abort(403);
+        }
+
+        // Optionally save edits even on rejection
+        if ($request->has('subject')) {
+            try {
+                $this->saveMailData($request, $tracker);
+            } catch (\Exception $e) {
+                // Ignore validation errors on reject
+            }
+        }
+
+        $tracker->update([
+            'status' => 'rejected',
+            'last_approved' => now()
+        ]);
+
+        // Cascade rejection to the main mail record
+        $sentMail = \App\Models\SentMail::findOrFail($tracker->mid);
+        $sentMail->update(['overall_status' => 'rejected']);
+
+        // Mark all other levels for this mail as rejected too
+        \App\Models\MailApprovalTracker::where('mid', $tracker->mid)
+            ->where('status', 'pending')
+            ->update(['status' => 'rejected']);
+
+        return redirect()->route('transfers.approvals')->with('success', 'Mail request rejected.');
+    }
+
+    public function editMail($id)
+    {
+        $tracker = \App\Models\MailApprovalTracker::with('sentMail.sender')->findOrFail($id);
+        
+        if ($tracker->email !== Auth::user()->email || $tracker->status !== 'pending') {
+            abort(403, 'You do not have permission to edit this approval.');
+        }
+
+        // Make sure it's actually their turn (enforce sequential locally too)
+        $previousPending = \App\Models\MailApprovalTracker::where('mid', $tracker->mid)
+            ->where('level', '<', $tracker->level)
+            ->where('status', 'pending')
+            ->exists();
+
+        if ($previousPending) {
+            abort(403, 'Waiting on previous approvers.');
+        }
+
+        return Inertia::render('FileTransfers/MailEdit', [
+            'tracker' => $tracker,
+            'sentMail' => $tracker->sentMail
+        ]);
+    }
+
+    public function updateMail(Request $request, $id)
+    {
+        $tracker = \App\Models\MailApprovalTracker::findOrFail($id);
+        
+        if ($tracker->email !== Auth::user()->email || $tracker->status !== 'pending') {
+            abort(403);
+        }
+
+        $this->saveMailData($request, $tracker);
+
+        return back()->with('success', 'Mail contents and attachments updated successfully.');
     }
 
     public function download($id)

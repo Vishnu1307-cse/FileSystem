@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class SentMail extends Model
 {
     protected $fillable = [
+        'type',
         'sender_id',
         'receiver',
         'cc',
@@ -16,6 +17,7 @@ class SentMail extends Model
         'body',
         'attachments',
         'overall_status',
+        'upload_status',
         'approval_table_name',
         'download_otp',
         'download_otp_expires_at',
@@ -34,5 +36,10 @@ class SentMail extends Model
     public function sender(): BelongsTo
     {
         return $this->belongsTo(User::class, 'sender_id');
+    }
+
+    public function externalLogs(): HasMany
+    {
+        return $this->hasMany(ExternalFileLog::class, 'sent_mail_id');
     }
 }

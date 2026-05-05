@@ -132,6 +132,52 @@ class ExternalPortalController extends Controller
         }
 
         // Return the first attachment found in the array
-        return Storage::disk('local')->download($attachments[0]);
+        $path = $attachments[0];
+        $filename = basename($path);
+        $cleanName = preg_replace('/^[0-9a-f]{13}_/', '', $filename);
+        
+        return Storage::disk('local')->download($path, $cleanName);
+    }
+
+    /**
+     * Handle file upload for request-type mails.
+     */
+    public function submitUpload(Request $request, $id)
+    {
+        $request->validate([
+            'file' => 'required|file|max:10240', // 10MB limit
+        ]);
+
+        $userId = Session::get('external_user_id');
+        $user   = User::findOrFail($userId);
+        $mail   = SentMail::findOrFail($id);
+
+        if ($mail->receiver !== $user->email || $mail->type !== 'request') {
+            abort(403);
+        }
+
+        if ($mail->upload_status === 'uploaded') {
+            return response()->json(['message' => 'File already uploaded for this request.'], 422);
+        }
+
+        $file = $request->file('file');
+        $filename = uniqid() . '_' . preg_replace('/[^A-Za-z0-9.\-_]/', '_', $file->getClientOriginalName());
+        $path = Storage::disk('local')->putFileAs('mail_attachments', $file, $filename);
+
+        // Update the mail record
+        $mail->update([
+            'attachments'   => array_merge($mail->attachments ?? [], [$path]),
+            'upload_status' => 'uploaded',
+        ]);
+
+        // Log the upload action
+        ExternalFileLog::create([
+            'user_id'      => $userId,
+            'sent_mail_id' => $mail->id,
+            'action'       => 'uploaded',
+            'ip_address'   => $request->ip(),
+        ]);
+
+        return response()->json(['message' => 'File uploaded successfully.'], 200);
     }
 }
