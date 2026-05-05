@@ -104,3 +104,31 @@ Route::middleware('signed')->group(function () {
 });
 
 require __DIR__.'/auth.php';
+
+use App\Http\Controllers\ExternalAuthController;
+use App\Http\Controllers\ExternalPortalController;
+
+Route::get('/external/login', function () {
+    return Inertia::render('ExternalAuth/Login');
+})->name('external.login');
+
+Route::post('/external/otp-send', [ExternalAuthController::class, 'sendOtp'])
+     ->name('external.otp.send');
+
+Route::post('/external/otp-verify', [ExternalAuthController::class, 'verifyOtp'])
+     ->name('external.otp.verify');
+
+Route::middleware('external.auth')->group(function () {
+    Route::get('/external/inbox', [ExternalPortalController::class, 'inbox'])
+         ->name('external.inbox');
+    Route::get('/external/mails/{id}', [ExternalPortalController::class, 'show'])
+         ->name('external.mail.show');
+    Route::post('/external/mails/{id}/request-download-otp',
+         [ExternalPortalController::class, 'requestDownloadOtp'])
+         ->name('external.download.otp');
+    Route::post('/external/mails/{id}/download',
+         [ExternalPortalController::class, 'download'])
+         ->name('external.download');
+    Route::post('/external/logout', [ExternalAuthController::class, 'logout'])
+         ->name('external.logout');
+});

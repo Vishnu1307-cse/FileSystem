@@ -6,6 +6,8 @@ use App\Models\SentMail;
 use App\Models\MailApprovalTracker;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
+use App\Mail\SentMailApprovedMail;
 
 class WebhookController extends Controller
 {
@@ -25,49 +27,45 @@ class WebhookController extends Controller
             }
 
             // STEP 2: Extract fields from actual callback payload
-            $sentMail     = SentMail::findOrFail($request->input('id'));
             $mailId       = $request->input('code');                    // ← 'code' not 'approval_code'
             $status       = strtoupper($request->input('status', '')); // normalize to uppercase
             $lastApprover = $request->input('last_approver');          // ← 'last_approver' not 'last_approved'
+            $actingLevel  = $lastApprover['approver_order'] ?? null;
+
+            // Find the tracker row first using the tracking code and the level
+            $actingRow = MailApprovalTracker::where('mail_id', $mailId)
+                                           ->where('level', $actingLevel)
+                                           ->first();
+
+            if (!$actingRow) {
+                return response()->json(['message' => 'Tracker record not found'], 404);
+            }
+
+            // Now find the SentMail record using the 'mid' (Foreign Key) from the tracker
+            $sentMail = SentMail::findOrFail($actingRow->mid);
 
             // STEP 3: Decision logic
 
             if ($status === 'REJECTED') {
                 // One approver rejected — cascade rejection down the chain
-                $actingEmail = $lastApprover['approver_email'] ?? null;
+                $actingRow->update([
+                    'status'        => 'rejected',
+                    'last_approved' => $lastApprover['acted_at'] ?? now(),
+                ]);
 
-                if ($actingEmail) {
-                    $actingRow = MailApprovalTracker::where('mail_id', $mailId)
-                                                   ->where('email', $actingEmail)
-                                                   ->first();
-                    if ($actingRow) {
-                        $actingRow->update([
-                            'status'        => 'rejected',
-                            'last_approved' => $lastApprover['acted_at'] ?? now(),
-                        ]);
-
-                        // Mark all lower level approvers as rejected too
-                        MailApprovalTracker::where('mail_id', $mailId)
-                                          ->where('level', '>', $actingRow->level)
-                                          ->update(['status' => 'rejected']);
-                    }
-                }
+                // Mark all lower level approvers as rejected too
+                MailApprovalTracker::where('mail_id', $mailId)
+                                  ->where('level', '>', $actingRow->level)
+                                  ->update(['status' => 'rejected']);
 
                 $sentMail->update(['overall_status' => 'rejected']);
 
-            } elseif ($status === 'PENDING' && !empty($lastApprover['approver_email'])) {
+            } elseif ($status === 'PENDING') {
                 // One person approved, chain is still running
-                $actingEmail = $lastApprover['approver_email'];
-
-                $actingRow = MailApprovalTracker::where('mail_id', $mailId)
-                                               ->where('email', $actingEmail)
-                                               ->first();
-                if ($actingRow) {
-                    $actingRow->update([
-                        'status'        => 'approved',
-                        'last_approved' => $lastApprover['acted_at'] ?? now(),
-                    ]);
-                }
+                $actingRow->update([
+                    'status'        => 'approved',
+                    'last_approved' => $lastApprover['acted_at'] ?? now(),
+                ]);
                 // Do NOT change overall_status — still waiting for remaining approvers
 
             } elseif ($status === 'APPROVED') {
@@ -80,6 +78,9 @@ class WebhookController extends Controller
                                       'status'        => 'approved',
                                       'last_approved' => now(),
                                   ]);
+
+                // Send the actual mail to the receiver now that it is approved
+                Mail::to($sentMail->receiver)->send(new SentMailApprovedMail($sentMail));
             }
 
             return response()->json(['message' => 'Webhook processed successfully.'], 200);
@@ -118,7 +119,7 @@ class WebhookController extends Controller
 
             // STEP 3: Find matching row in mail_approval_trackers
             $row = MailApprovalTracker::where('mail_id', $code)
-                                      ->where('email', $actingEmail)
+                                      ->where('level', $actingLevel)
                                       ->first();
 
             if ($row === null) {
@@ -160,6 +161,12 @@ class WebhookController extends Controller
 
                 SentMail::where('id', $row->mid)
                         ->update(['overall_status' => 'approved']);
+
+                // Send the actual mail to the receiver now that it is approved
+                $sentMail = SentMail::with('sender')->find($row->mid);
+                if ($sentMail) {
+                    Mail::to($sentMail->receiver)->send(new SentMailApprovedMail($sentMail));
+                }
             }
 
             // STEP 5: Return response

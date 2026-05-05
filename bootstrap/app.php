@@ -21,12 +21,18 @@ return Application::configure(basePath: dirname(__DIR__))
             'api/transfers/*/status-update',
             'api/webhooks/mail-approval',
             'api/webhooks/send-file-approval',
+            'external/otp-send',
+            'external/otp-verify',
+            'external/mails/*/download',
+            'external/mails/*/request-download-otp',
+            'external/logout',
         ]);
 
         //
         $middleware->alias([
             'role' => \App\Http\Middleware\RoleMiddleware::class,
             'permission' => \App\Http\Middleware\PermissionMiddleware::class,
+            'external.auth' => \App\Http\Middleware\ExternalAuthMiddleware::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

@@ -17,10 +17,13 @@ class SentMail extends Model
         'attachments',
         'overall_status',
         'approval_table_name',
+        'download_otp',
+        'download_otp_expires_at',
     ];
 
     protected $casts = [
         'attachments' => 'array',
+        'download_otp_expires_at' => 'datetime',
     ];
 
     public function trackers(): HasMany
