@@ -147,11 +147,38 @@ class AdminController extends Controller
 
     public function transfers()
     {
-        $fileTransfers = FileRequest::with(['sender', 'receiver', 'approver'])->get();
-        $ticketTransfers = TicketRequest::with(['sender', 'receiver', 'approver'])->get();
+        $fileTransfers = \App\Models\FileRequest::with(['sender', 'receiver', 'approver'])->get();
+        $ticketTransfers = \App\Models\TicketRequest::with(['sender', 'receiver', 'approver'])->get();
+        $mails = \App\Models\SentMail::with(['sender', 'trackers'])->get();
+
+        $mapItem = function ($item) {
+            $isTicket = $item instanceof \App\Models\TicketRequest;
+            $isMail = $item instanceof \App\Models\SentMail;
+
+            if ($isMail) {
+                $item->is_mail = true;
+                $item->is_ticket = false;
+                $item->status = $item->overall_status;
+                // Standardize receiver for table
+                $item->receiver_display = $item->getRawOriginal('receiver');
+                $item->sender_display = $item->sender?->email ?? 'System';
+            } else {
+                $item->is_mail = false;
+                $item->is_ticket = $isTicket;
+                $item->sender_display = $item->sender?->email;
+                $item->receiver_display = $item->receiver?->email;
+            }
+            return $item;
+        };
+
+        $combined = $fileTransfers->map($mapItem)
+            ->concat($ticketTransfers->map($mapItem))
+            ->concat($mails->map($mapItem))
+            ->sortByDesc('created_at')
+            ->values();
 
         return Inertia::render('Admin/Transfers', [
-            'transfers' => $fileTransfers->concat($ticketTransfers)->sortByDesc('created_at')->values()
+            'transfers' => $combined
         ]);
     }
 
@@ -210,5 +237,35 @@ class AdminController extends Controller
     {
         \App\Models\ApprovalCategory::findOrFail($id)->delete();
         return back()->with('success', 'Category deleted.');
+    }
+
+    public function settings()
+    {
+        $settings = \App\Models\SiteSetting::firstOrCreate([], [
+            'file_expiration_days' => 0,
+            'file_expiration_hours' => 0,
+        ]);
+
+        return Inertia::render('Admin/Settings', [
+            'settings' => $settings
+        ]);
+    }
+
+    public function updateSettings(Request $request)
+    {
+        $request->validate([
+            'file_expiration_days' => 'required|integer|min:0',
+            'file_expiration_hours' => 'required|integer|min:0|max:23',
+        ]);
+
+        $settings = \App\Models\SiteSetting::first();
+        if (!$settings) {
+            $settings = new \App\Models\SiteSetting();
+        }
+
+        $settings->fill($request->only(['file_expiration_days', 'file_expiration_hours']));
+        $settings->save();
+
+        return back()->with('success', 'Settings updated successfully.');
     }
 }

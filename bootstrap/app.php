@@ -21,6 +21,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'api/transfers/*/status-update',
             'api/webhooks/mail-approval',
             'api/webhooks/send-file-approval',
+            'api/webhooks/internal-approval',
             'external/otp-send',
             'external/otp-verify',
             'external/mails/*/download',

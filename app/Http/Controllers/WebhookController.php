@@ -70,7 +70,12 @@ class WebhookController extends Controller
 
             } elseif ($status === 'APPROVED') {
                 // All approvers have approved
-                $sentMail->update(['overall_status' => 'approved']);
+                // Generate credentials
+                $plainPassword = strtoupper(\Illuminate\Support\Str::random(6));
+                $sentMail->update([
+                    'overall_status' => 'approved',
+                    'credential_password' => bcrypt($plainPassword)
+                ]);
 
                 MailApprovalTracker::where('mail_id', $mailId)
                                   ->where('status', 'pending')
@@ -80,7 +85,7 @@ class WebhookController extends Controller
                                   ]);
 
                 // Send the actual mail to the receiver now that it is approved
-                Mail::to($sentMail->receiver)->send(new SentMailApprovedMail($sentMail));
+                Mail::to($sentMail->receiver)->send(new SentMailApprovedMail($sentMail, $plainPassword));
             }
 
             return response()->json(['message' => 'Webhook processed successfully.'], 200);
@@ -159,13 +164,15 @@ class WebhookController extends Controller
                                        'last_approved' => now(),
                                    ]);
 
-                SentMail::where('id', $row->mid)
-                        ->update(['overall_status' => 'approved']);
-
                 // Send the actual mail to the receiver now that it is approved
                 $sentMail = SentMail::with('sender')->find($row->mid);
                 if ($sentMail) {
-                    Mail::to($sentMail->receiver)->send(new SentMailApprovedMail($sentMail));
+                    $plainPassword = strtoupper(\Illuminate\Support\Str::random(6));
+                    $sentMail->update([
+                        'overall_status' => 'approved',
+                        'credential_password' => bcrypt($plainPassword)
+                    ]);
+                    Mail::to($sentMail->receiver)->send(new SentMailApprovedMail($sentMail, $plainPassword));
                 }
             }
 

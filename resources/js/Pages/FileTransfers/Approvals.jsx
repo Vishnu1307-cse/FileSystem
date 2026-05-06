@@ -5,19 +5,41 @@ export default function Approvals({ approvals }) {
     const { props } = usePage();
     const { post, processing } = useForm();
 
-    const handleApprove = (approval) => {
+    const handleApprove = async (approval) => {
         if (approval.source_type === 'sent_mail') {
-            post(route('mail-approvals.approve', approval.id));
+            if (!confirm('Are you sure you want to approve this?')) return;
+            try {
+                await window.axios.post('/api/internal-approval/act', {
+                    mail_id: approval.mail_id,
+                    level:   approval.current_step,
+                    action:  'approve',
+                });
+                alert('Approval submitted successfully.');
+                window.location.reload();
+            } catch (error) {
+                alert(error.response?.data?.message || 'Failed to submit approval.');
+            }
         } else {
             post(route('transfers.approve', approval.id));
         }
     };
 
-    const handleReject = (approval) => {
-        if (confirm('Are you sure you want to reject this transfer? The flow will be terminated immediately.')) {
-            if (approval.source_type === 'sent_mail') {
-                post(route('mail-approvals.reject', approval.id));
-            } else {
+    const handleReject = async (approval) => {
+        if (approval.source_type === 'sent_mail') {
+            if (!confirm('Are you sure you want to reject this?')) return;
+            try {
+                await window.axios.post('/api/internal-approval/act', {
+                    mail_id: approval.mail_id,
+                    level:   approval.current_step,
+                    action:  'reject',
+                });
+                alert('Rejection submitted successfully.');
+                window.location.reload();
+            } catch (error) {
+                alert(error.response?.data?.message || 'Failed to submit rejection.');
+            }
+        } else {
+            if (confirm('Are you sure you want to reject this transfer? The flow will be terminated immediately.')) {
                 post(route('transfers.reject', approval.id));
             }
         }

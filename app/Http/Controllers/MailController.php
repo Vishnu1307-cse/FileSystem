@@ -90,6 +90,11 @@ class MailController extends Controller
     public function download($id, $index)
     {
         $mail = SentMail::findOrFail($id);
+
+        if ($mail->isExpired()) {
+            abort(403, 'Time expired');
+        }
+
         $attachments = $mail->attachments ?? [];
         
         if (!isset($attachments[$index])) {

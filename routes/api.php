@@ -13,3 +13,11 @@ use App\Http\Controllers\SendFileController;
 Route::post('/send-files', [SendFileController::class, 'store'])->middleware('auth:sanctum');
 
 Route::post('/webhooks/send-file-approval', [App\Http\Controllers\WebhookController::class, 'sendFileApproval']);
+
+use App\Http\Controllers\InternalApprovalController;
+Route::post('/internal-approval/act', [InternalApprovalController::class, 'act'])
+     ->middleware('web', 'auth');
+
+use App\Http\Controllers\InternalApprovalWebhookController;
+Route::post('/webhooks/internal-approval', 
+    [InternalApprovalWebhookController::class, 'handle']);

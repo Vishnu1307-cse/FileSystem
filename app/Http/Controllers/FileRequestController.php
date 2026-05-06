@@ -178,6 +178,33 @@ class FileRequestController extends Controller
         ]);
     }
 
+    public function myApprovals()
+    {
+        $user = Auth::user();
+        
+        $myApprovals = \App\Models\MailApprovalTracker::with(['sentMail.sender'])
+            ->where('email', $user->email)
+            ->whereIn('status', ['approved', 'rejected'])
+            ->orderByDesc('last_approved')
+            ->get()
+            ->map(function($tracker) {
+                return [
+                    'id' => $tracker->id,
+                    'mail_id' => $tracker->sentMail->id,
+                    'subject' => $tracker->sentMail->subject,
+                    'sender' => $tracker->sentMail->sender,
+                    'receiver_email' => $tracker->sentMail->receiver,
+                    'my_action' => $tracker->status,
+                    'acted_at' => $tracker->last_approved,
+                    'overall_status' => $tracker->sentMail->overall_status,
+                ];
+            });
+
+        return Inertia::render('FileTransfers/MyApprovals', [
+            'approvals' => $myApprovals
+        ]);
+    }
+
     public function show($id)
     {
         $transfer = FileRequest::with(['sender', 'receiver', 'approver', 'approvalLogs.user', 'category.sequences.user'])->find($id) 
@@ -253,6 +280,7 @@ class FileRequestController extends Controller
     {
         $request->validate([
             'subject' => 'required|string|max:255',
+            'cc' => 'nullable|string',
             'body' => 'required|string',
             'removed_attachments' => 'nullable|array',
             'new_files.*' => 'nullable|file',
@@ -289,6 +317,7 @@ class FileRequestController extends Controller
 
         $sentMail->update([
             'subject' => $request->subject,
+            'cc' => $request->cc,
             'body' => $request->body,
             'attachments' => $finalAttachments,
         ]);
@@ -320,10 +349,16 @@ class FileRequestController extends Controller
 
         if ($pendingCount === 0) {
             $sentMail = \App\Models\SentMail::with('sender')->findOrFail($tracker->mid);
-            $sentMail->update(['overall_status' => 'approved']);
+            
+            // Generate credentials
+            $plainPassword = strtoupper(\Illuminate\Support\Str::random(6));
+            $sentMail->update([
+                'overall_status' => 'approved',
+                'credential_password' => bcrypt($plainPassword)
+            ]);
             
             // Send the actual mail to the receiver
-            Mail::to($sentMail->receiver)->send(new \App\Mail\SentMailApprovedMail($sentMail));
+            Mail::to($sentMail->receiver)->send(new \App\Mail\SentMailApprovedMail($sentMail, $plainPassword));
             
             return redirect()->route('transfers.approvals')->with('success', 'Mail fully approved and sent to recipient.');
         }

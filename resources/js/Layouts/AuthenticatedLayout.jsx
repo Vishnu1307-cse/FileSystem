@@ -46,8 +46,26 @@ export default function AuthenticatedLayout({ header, children }) {
                         </Can>
 
                         <Can permission="inbox.view">
-                            <Link href={route('inbox.index')} className={`nav-item ${route().current('inbox.*') ? 'active' : ''}`}>
-                                <Icon path="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" /> My Inbox
+                            <Link href={route('inbox.index')} className={`nav-item ${route().current('inbox.index') ? 'active' : ''}`}>
+                                <Icon path="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" /> Inbox
+                            </Link>
+                        </Can>
+
+                        <Can permission="sent.view">
+                            <Link href={route('sent.index')} className={`nav-item ${route().current('sent.index') ? 'active' : ''}`}>
+                                <Icon path="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" /> Sent Items
+                            </Link>
+                        </Can>
+
+                        <Can permission="teamsent.view">
+                            <Link href={route('teamsent.index')} className={`nav-item ${route().current('teamsent.index') ? 'active' : ''}`}>
+                                <Icon path="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /> Team Oversight
+                            </Link>
+                        </Can>
+
+                        <Can permission="responses.view">
+                            <Link href={route('responses.index')} className={`nav-item ${route().current('responses.*') ? 'active' : ''}`}>
+                                <Icon path="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" /> Response from customer
                             </Link>
                         </Can>
 
@@ -92,6 +110,12 @@ export default function AuthenticatedLayout({ header, children }) {
                             </Link>
                         </Can>
 
+                        <Can permission="admin.settings">
+                            <Link href={route('manage.settings')} className={`nav-item ${route().current('manage.settings') ? 'active' : ''}`}>
+                                <Icon path="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /> Set Timer
+                            </Link>
+                        </Can>
+
                         <Can permission="transfers.compose">
                             <div className="text-[10px] font-bold text-gray-400 uppercase px-4 mt-6 mb-2 tracking-widest opacity-70">File Services</div>
                             <Link href={route('transfers.compose')} className={`nav-item ${route().current('transfers.compose') ? 'active' : ''}`}>
@@ -102,6 +126,12 @@ export default function AuthenticatedLayout({ header, children }) {
                         <Can permission="approvals.view">
                             <Link href={route('transfers.approvals')} className={`nav-item ${route().current('transfers.approvals') ? 'active' : ''}`}>
                                 <Icon path="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /> Approvals
+                            </Link>
+                        </Can>
+
+                        <Can permission="my_approvals.view">
+                            <Link href={route('transfers.my_approvals')} className={`nav-item ${route().current('transfers.my_approvals') ? 'active' : ''}`}>
+                                <Icon path="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /> My Approvals
                             </Link>
                         </Can>
 

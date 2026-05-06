@@ -40,7 +40,7 @@ class MailApprovalService
                     // ⚠️ Do NOT include 'attachments' here.
                     // Files are stored locally only and must never be sent to the API.
                 ],
-                'callback_url' => url('/api/webhooks/mail-approval'),
+                'callback_url' => url('/api/webhooks/internal-approval'),
                 'approvers'    => array_map(function ($approver) {
                     return [
                         'name'  => $approver['name'],

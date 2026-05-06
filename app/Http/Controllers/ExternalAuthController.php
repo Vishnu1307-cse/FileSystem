@@ -96,7 +96,7 @@ class ExternalAuthController extends Controller
             'otp_expires_at' => null
         ]);
 
-        Session::put('external_user_id', $user->id);
+        \Illuminate\Support\Facades\Auth::login($user);
 
         return response()->json(['message' => 'Login successful.'], 200);
     }

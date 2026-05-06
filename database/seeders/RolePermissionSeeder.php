@@ -14,7 +14,8 @@ class RolePermissionSeeder extends Seeder
         // Define Permissions
         $permissions = [
             'dashboard.view' => 'Access Dashboard',
-            'inbox.view' => 'View Inbox',
+            'inbox.view' => 'View My Inbox (Received)',
+            'sent.view' => 'View My Sent Items',
             'transfers.compose' => 'Compose File Transfers',
             'approvals.view' => 'Manage Approvals',
             'admin.users' => 'Manage Users',
@@ -22,6 +23,10 @@ class RolePermissionSeeder extends Seeder
             'admin.roles' => 'Manage Roles & Permissions',
             'admin.approval_categories' => 'Manage Approval Sequences',
             'tickets.upload' => 'Upload Ticket Files',
+            'my_approvals.view' => 'View My Past Approvals',
+            'responses.view' => 'View Customer Responses',
+            'admin.settings' => 'Manage System Settings',
+            'teamsent.view' => 'View Team Oversight (HOD View)',
         ];
 
         foreach ($permissions as $slug => $name) {
@@ -36,19 +41,23 @@ class RolePermissionSeeder extends Seeder
             ],
             'hod' => [
                 'name' => 'Head of Department',
-                'permissions' => ['dashboard.view', 'inbox.view', 'transfers.compose', 'approvals.view']
+                'permissions' => ['dashboard.view', 'inbox.view', 'sent.view', 'teamsent.view', 'transfers.compose', 'approvals.view', 'responses.view']
+            ],
+            'hr' => [
+                'name' => 'Human Resources',
+                'permissions' => ['dashboard.view', 'inbox.view', 'sent.view', 'teamsent.view', 'transfers.compose', 'responses.view']
             ],
             'employee' => [
                 'name' => 'Employee',
-                'permissions' => ['dashboard.view', 'inbox.view', 'transfers.compose', 'approvals.view']
+                'permissions' => ['dashboard.view', 'inbox.view', 'sent.view', 'transfers.compose', 'approvals.view', 'responses.view']
             ],
             'vendor' => [
                 'name' => 'Vendor',
-                'permissions' => ['dashboard.view', 'inbox.view', 'tickets.upload']
+                'permissions' => ['dashboard.view', 'inbox.view', 'sent.view', 'tickets.upload']
             ],
             'customer' => [
                 'name' => 'Customer',
-                'permissions' => ['dashboard.view', 'inbox.view', 'tickets.upload']
+                'permissions' => ['dashboard.view', 'inbox.view', 'sent.view', 'tickets.upload']
             ],
         ];
 

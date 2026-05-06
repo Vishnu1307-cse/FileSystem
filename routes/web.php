@@ -46,6 +46,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/transfers/approvals', [\App\Http\Controllers\FileRequestController::class, 'approvalsIndex'])
         ->name('transfers.approvals')
         ->middleware('permission:approvals.view');
+
+    Route::get('/my-approvals', [\App\Http\Controllers\FileRequestController::class, 'myApprovals'])
+        ->name('transfers.my_approvals')
+        ->middleware('permission:my_approvals.view');
         
     Route::post('/transfers', [\App\Http\Controllers\FileRequestController::class, 'store'])
         ->name('transfers.store')
@@ -73,10 +77,19 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/tickets/{transfer}/upload', [\App\Http\Controllers\TicketController::class, 'upload'])->name('tickets.submit_upload')->middleware('permission:tickets.upload');
 
     // Profile & Inbox
-    Route::get('/inbox', [\App\Http\Controllers\InboxController::class, 'index'])->name('inbox.index')->middleware('permission:inbox.view');
+    Route::get('/', [\App\Http\Controllers\InboxController::class, 'inbox'])
+        ->name('inbox.index')
+        ->middleware('permission:inbox.view');
+
+    Route::get('/sent', [\App\Http\Controllers\InboxController::class, 'sent'])
+        ->name('sent.index')
+        ->middleware('permission:sent.view');
+    Route::get('/sent/team', [\App\Http\Controllers\InboxController::class, 'teamSent'])
+        ->name('teamsent.index')
+        ->middleware('permission:teamsent.view');
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
-    Route::post('/transfers/{id}/approve', [\App\Http\Controllers\FileRequestController::class, 'approve'])->name('transfers.approve');
-    Route::post('/transfers/{id}/reject', [\App\Http\Controllers\FileRequestController::class, 'reject'])->name('transfers.reject');
+    //Route::post('/transfers/{id}/approve', [\App\Http\Controllers\FileRequestController::class, 'approve'])->name('transfers.approve');
+    //Route::post('/transfers/{id}/reject', [\App\Http\Controllers\FileRequestController::class, 'reject'])->name('transfers.reject');
 
     // Mail Portal Approvals
     Route::get('/mail-approvals/{id}', [\App\Http\Controllers\FileRequestController::class, 'editMail'])->name('mail-approvals.edit');
@@ -101,6 +114,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/manage/approval-categories', [AdminController::class, 'storeApprovalCategory'])->name('manage.approval_categories.store')->middleware('permission:admin.approval_categories');
     Route::patch('/manage/approval-categories/{id}/approvers', [AdminController::class, 'updateCategoryApprovers'])->name('manage.approval_categories.update_approvers')->middleware('permission:admin.approval_categories');
     Route::delete('/manage/approval-categories/{id}', [AdminController::class, 'deleteApprovalCategory'])->name('manage.approval_categories.delete')->middleware('permission:admin.approval_categories');
+
+    Route::get('/responses', [\App\Http\Controllers\InboxController::class, 'responses'])
+        ->name('responses.index')
+        ->middleware('permission:responses.view');
+
+    Route::get('/manage/settings', [AdminController::class, 'settings'])->name('manage.settings')->middleware('permission:admin.settings');
+    Route::post('/manage/settings', [AdminController::class, 'updateSettings'])->name('manage.settings.update')->middleware('permission:admin.settings');
 });
 
 // Signed routes for email 1-click actions
@@ -126,8 +146,9 @@ Route::post('/external/otp-verify', [ExternalAuthController::class, 'verifyOtp']
      ->name('external.otp.verify');
 
 Route::middleware('external.auth')->group(function () {
-    Route::get('/external/inbox', [ExternalPortalController::class, 'inbox'])
-         ->name('external.inbox');
+    Route::get('/external/inbox', function () {
+        return redirect()->route('inbox.index');
+    })->name('external.inbox');
     Route::get('/external/mails/{id}', [ExternalPortalController::class, 'show'])
          ->name('external.mail.show');
     Route::post('/external/mails/{id}/request-download-otp',
@@ -141,4 +162,10 @@ Route::middleware('external.auth')->group(function () {
          ->name('external.upload.submit');
     Route::post('/external/logout', [ExternalAuthController::class, 'logout'])
          ->name('external.logout');
+    Route::get('/external/mails/{id}/reply', [ExternalPortalController::class, 'reply'])
+         ->name('external.mail.reply');
+    Route::post('/external/mails/{id}/reply', [ExternalPortalController::class, 'submitReply'])
+         ->name('external.mail.reply.submit');
+    Route::get('/external/transfers/{id}', [ExternalPortalController::class, 'showTransfer'])
+         ->name('external.transfer.show');
 });

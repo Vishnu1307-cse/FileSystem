@@ -15,19 +15,15 @@ class ExternalAuthMiddleware
      */
     public function handle(Request $request, Closure $next): Response
     {
-        $userId = Session::get('external_user_id');
-        
-        if ($userId === null) {
+        if (!\Illuminate\Support\Facades\Auth::check()) {
             return redirect('/external/login');
         }
         
-        // Verify the user still exists and is still a customer or vendor
-        $user = User::whereHas('role', function ($q) {
-            $q->whereIn('slug', ['customer', 'vendor']);
-        })->find($userId);
+        $user = \Illuminate\Support\Facades\Auth::user();
         
-        if ($user === null) {
-            Session::forget('external_user_id');
+        // Verify the user is still a customer or vendor
+        if (!$user->role || !in_array($user->role->slug, ['customer', 'vendor'])) {
+            \Illuminate\Support\Facades\Auth::logout();
             return redirect('/external/login');
         }
         

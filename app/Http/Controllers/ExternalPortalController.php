@@ -7,6 +7,7 @@ use App\Models\SentMail;
 use App\Models\ExternalFileLog;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Session;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
@@ -19,8 +20,8 @@ class ExternalPortalController extends Controller
      */
     public function inbox(Request $request)
     {
-        $userId = Session::get('external_user_id');
-        $user   = User::findOrFail($userId);
+        $user = Auth::user();
+        $userId = $user->id;
 
         $mails = SentMail::where('receiver', $user->email)
                           ->where('overall_status', 'approved')
@@ -38,11 +39,11 @@ class ExternalPortalController extends Controller
      */
     public function show(Request $request, $id)
     {
-        $userId = Session::get('external_user_id');
-        $user   = User::findOrFail($userId);
+        $user = Auth::user();
+        $userId = $user->id;
         $mail   = SentMail::findOrFail($id);
 
-        if ($mail->receiver !== $user->email) {
+        if ($mail->receiver !== $user->email && $mail->sender_id !== $user->id) {
             abort(403);
         }
 
@@ -64,12 +65,22 @@ class ExternalPortalController extends Controller
      */
     public function requestDownloadOtp(Request $request, $id)
     {
-        $userId = Session::get('external_user_id');
-        $user   = User::findOrFail($userId);
+        $user = Auth::user();
+        $userId = $user->id;
         $mail   = SentMail::findOrFail($id);
 
         if ($mail->receiver !== $user->email) {
             abort(403);
+        }
+
+        $request->validate([
+            'uid' => 'required|string',
+            'password' => 'required|string',
+        ]);
+
+        $expectedUid = explode('@', $mail->receiver)[0];
+        if ($request->uid !== $expectedUid || !\Illuminate\Support\Facades\Hash::check($request->password, $mail->credential_password)) {
+            return response()->json(['message' => 'Invalid User ID or Password.'], 401);
         }
 
         $otp = strval(random_int(100000, 999999));
@@ -96,12 +107,27 @@ class ExternalPortalController extends Controller
     {
         $request->validate(['otp' => 'required|string']);
 
-        $userId = Session::get('external_user_id');
-        $user   = User::findOrFail($userId);
+        $user   = Auth::user();
+        $userId = $user->id;
         $mail   = SentMail::findOrFail($id);
 
         if ($mail->receiver !== $user->email) {
             abort(403);
+        }
+
+        if ($mail->isExpired()) {
+            return response()->json(['message' => 'Time expired'], 403);
+        }
+
+        $request->validate([
+            'uid' => 'required|string',
+            'password' => 'required|string',
+            'otp' => 'required|string',
+        ]);
+
+        $expectedUid = explode('@', $mail->receiver)[0];
+        if ($request->uid !== $expectedUid || !\Illuminate\Support\Facades\Hash::check($request->password, $mail->credential_password)) {
+            return response()->json(['message' => 'Invalid User ID or Password.'], 401);
         }
 
         if (!$mail->download_otp_expires_at || $mail->download_otp_expires_at->isPast()) {
@@ -148,8 +174,8 @@ class ExternalPortalController extends Controller
             'file' => 'required|file|max:10240', // 10MB limit
         ]);
 
-        $userId = Session::get('external_user_id');
-        $user   = User::findOrFail($userId);
+        $user   = Auth::user();
+        $userId = $user->id;
         $mail   = SentMail::findOrFail($id);
 
         if ($mail->receiver !== $user->email || $mail->type !== 'request') {
@@ -179,5 +205,86 @@ class ExternalPortalController extends Controller
         ]);
 
         return response()->json(['message' => 'File uploaded successfully.'], 200);
+    }
+    public function reply($id)
+    {
+        $user = Auth::user();
+        $originalMail = SentMail::with('sender')->findOrFail($id);
+
+        if ($originalMail->receiver !== $user->email) {
+            abort(403);
+        }
+
+        return Inertia::render('ExternalPortal/Reply', [
+            'originalMail' => $originalMail,
+            'user' => $user
+        ]);
+    }
+
+    public function submitReply(Request $request, $id)
+    {
+        $user = Auth::user();
+        $originalMail = SentMail::with('sender')->findOrFail($id);
+
+        if ($originalMail->receiver !== $user->email) {
+            abort(403);
+        }
+
+        $request->validate([
+            'subject' => 'required|string|max:255',
+            'body' => 'required|string',
+            'cc' => 'nullable|string',
+        ]);
+
+        // Create a new SentMail record for the reply
+        $reply = SentMail::create([
+            'reply_to_id' => $originalMail->id,
+            'type' => 'send', // It's a standard send (reply)
+            'sender_id' => $user->id,
+            'receiver' => $originalMail->sender->email,
+            'cc' => $request->cc,
+            'subject' => 'Re: ' . $originalMail->subject,
+            'body' => $request->body,
+            'overall_status' => 'approved', // Skip approval as requested
+            'upload_status' => 'none',
+        ]);
+
+        // Send email to original composer
+        Mail::raw($request->body, function ($message) use ($reply) {
+            $message->to($reply->receiver)
+                    ->subject($reply->subject);
+            if ($reply->cc) {
+                $message->cc(explode(',', $reply->cc));
+            }
+        });
+
+        return redirect()->route('inbox.index')->with('success', 'Reply sent successfully.');
+    }
+
+    public function showTransfer($id)
+    {
+        $user = Auth::user();
+        $transfer = \App\Models\FileRequest::with(['sender', 'receiver', 'approver'])->find($id) 
+                 ?? \App\Models\TicketRequest::with(['sender', 'receiver', 'approver'])->findOrFail($id);
+
+        if ($transfer->receiver_id !== $user->id && $transfer->sender_id !== $user->id) {
+            abort(403);
+        }
+
+        // Standardize file info for the view
+        $file_info = null;
+        if ($transfer->file_path) {
+            $file_info = [
+                'original_name' => basename($transfer->file_path),
+                'size' => $transfer->file_size ?? 0,
+                'mime_type' => $transfer->mime_type ?? 'application/octet-stream'
+            ];
+        }
+
+        return Inertia::render('ExternalPortal/TransferShow', [
+            'transfer' => $transfer,
+            'file_info' => $file_info,
+            'is_ticket' => $transfer instanceof \App\Models\TicketRequest
+        ]);
     }
 }

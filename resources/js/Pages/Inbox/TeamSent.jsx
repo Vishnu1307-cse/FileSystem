@@ -1,13 +1,15 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head, Link } from '@inertiajs/react';
+import { Head, Link, usePage } from '@inertiajs/react';
 
-export default function Index({ received, sent, teamSent, isHod }) {
+export default function TeamSent({ teamSent }) {
+    const { auth } = usePage().props;
+    
     const renderTable = (items, title, emptyMsg) => (
         <div className="card p-0 overflow-hidden mb-10 border border-gray-100 shadow-xl">
             <div className="px-6 py-4 bg-gray-50 border-b border-gray-100 flex justify-between items-center">
                 <div className="flex items-center gap-3">
-                    <div className="h-8 w-8 rounded-lg bg-indigo-600 flex items-center justify-center text-white text-xs shadow-lg shadow-indigo-100">
-                        {title.includes('Received') ? '📥' : (title.includes('Team') ? '👥' : '📤')}
+                    <div className="h-8 w-8 rounded-lg bg-[#7366ff] flex items-center justify-center text-white text-xs shadow-lg shadow-indigo-100">
+                        👥
                     </div>
                     <h3 className="text-sm font-bold text-gray-700 uppercase tracking-widest">{title}</h3>
                 </div>
@@ -18,9 +20,9 @@ export default function Index({ received, sent, teamSent, isHod }) {
                     <thead>
                         <tr className="bg-white border-b border-gray-50">
                             <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Type</th>
-                            <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Title</th>
-                            <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Subject / Description</th>
-                            <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">{title.includes('Received') ? 'Sender' : 'Receiver'}</th>
+                            <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Subject</th>
+                            <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Sender</th>
+                            <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Receiver</th>
                             <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Status</th>
                             <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Date</th>
                             <th className="px-6 py-4 text-right text-[10px] font-bold text-gray-400 uppercase tracking-widest">Action</th>
@@ -35,14 +37,31 @@ export default function Index({ received, sent, teamSent, isHod }) {
                                     </span>
                                 </td>
                                 <td className="px-6 py-4">
-                                    <div className="text-sm font-bold text-gray-800">{item.subject || 'No Title'}</div>
-                                </td>
-                                <td className="px-6 py-4">
+                                    <div className="flex items-center gap-2">
+                                        <div className="text-sm font-bold text-gray-800">{item.subject || 'No Title'}</div>
+                                        {item.is_response && (
+                                            <span className="px-1.5 py-0.5 bg-indigo-100 text-indigo-600 text-[8px] font-black uppercase rounded">Response</span>
+                                        )}
+                                    </div>
                                     <div className="text-[10px] text-gray-400 font-medium truncate max-w-xs">{item.message || item.body || 'N/A'}</div>
+                                    {item.is_response && item.parent_subject && (
+                                        <div className="mt-1">
+                                            <Link 
+                                                href={route('mails.show', item.reply_to_id)}
+                                                className="text-[8px] text-indigo-400 font-bold uppercase tracking-tighter italic hover:text-indigo-600 hover:underline transition-colors"
+                                            >
+                                                Replying to: {item.parent_subject}
+                                            </Link>
+                                        </div>
+                                    )}
                                 </td>
                                 <td className="px-6 py-4">
-                                    <div className="text-sm font-bold text-gray-800">{title.includes('Received') ? item.sender?.email : item.receiver?.email}</div>
-                                    <div className="text-[10px] text-gray-400 font-medium uppercase tracking-tighter">{title.includes('Received') ? item.sender?.name : item.receiver?.name}</div>
+                                    <div className="text-sm font-bold text-gray-800">{item.sender?.name}</div>
+                                    <div className="text-[10px] text-gray-400 font-medium uppercase tracking-tighter">{item.sender?.email}</div>
+                                </td>
+                                <td className="px-6 py-4">
+                                    <div className="text-sm font-bold text-gray-800">{item.receiver?.email || item.receiver}</div>
+                                    <div className="text-[10px] text-gray-400 font-medium uppercase tracking-tighter">{item.receiver?.name || 'External'}</div>
                                 </td>
                                 <td className="px-6 py-4">
                                     {item.is_mail && item.trackers && item.trackers.length > 0 ? (
@@ -74,33 +93,32 @@ export default function Index({ received, sent, teamSent, isHod }) {
                                     </div>
                                 </td>
                                 <td className="px-6 py-4 text-right">
-                                    <Link href={item.is_mail ? route('mails.show', item.id) : route('transfers.show', item.id)} className="text-[10px] font-bold text-[#7366ff] hover:underline uppercase tracking-widest">View Details</Link>
+                                    <Link 
+                                        href={item.is_mail ? route('mails.show', item.id) : route('transfers.show', item.id)} 
+                                        className="text-[10px] font-bold text-[#7366ff] hover:underline uppercase tracking-widest"
+                                    >
+                                        View Details
+                                    </Link>
                                 </td>
                             </tr>
                         ))}
-                        {items.length === 0 && (
-                            <tr>
-                                <td colSpan="7" className="px-6 py-16 text-center">
-                                    <div className="text-4xl mb-3 opacity-20 flex justify-center text-gray-400">
-                                        <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" /></svg>
-                                    </div>
-                                    <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">{emptyMsg}</p>
-                                </td>
-                            </tr>
-                        )}
                     </tbody>
                 </table>
+                {items.length === 0 && (
+                    <div className="py-20 text-center">
+                        <div className="text-gray-200 text-6xl mb-4 flex justify-center">👥</div>
+                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{emptyMsg}</p>
+                    </div>
+                )}
             </div>
         </div>
     );
 
     return (
-        <AuthenticatedLayout header="Transaction History">
-            <Head title="Inbox" />
-            <div className="mx-auto w-full px-4 sm:px-6 lg:px-8">
-                {renderTable(received, "Items Received", "No inbound transfers found.")}
-                {renderTable(sent, "Items Sent", "You haven't initiated any transfers.")}
-                {isHod && renderTable(teamSent, "Team Oversight (HOD View)", "No team transfers recorded.")}
+        <AuthenticatedLayout header="Team Oversight (HOD View)">
+            <Head title="Team Sent Items" />
+            <div className="mx-auto w-full px-4 sm:px-6 lg:px-8 py-6">
+                {renderTable(teamSent, "Department Activity Monitor", "No team transactions found.")}
             </div>
         </AuthenticatedLayout>
     );

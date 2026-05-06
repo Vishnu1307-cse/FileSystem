@@ -30,31 +30,48 @@ export default function Transfers({ transfers }) {
                                 </thead>
                                 <tbody className="bg-white divide-y divide-gray-200">
                                     {transfers.map((t) => (
-                                        <tr key={`${t.is_ticket ? 't' : 'f'}-${t.id}`} className="hover:bg-gray-50 transition">
-                                            <td className="px-6 py-4">
-                                                <span className={`px-2 py-0.5 text-[9px] font-bold rounded ${t.is_ticket ? 'bg-orange-100 text-orange-800' : 'bg-blue-100 text-blue-800'}`}>
-                                                    {t.is_ticket ? 'TICKET' : 'FILE'}
-                                                </span>
-                                            </td>
-                                            <td className="px-6 py-4 text-xs font-medium text-gray-900">{t.sender.email}</td>
-                                            <td className="px-6 py-4 text-xs text-gray-600">{t.receiver.email}</td>
-                                            <td className="px-6 py-4 text-xs text-gray-600">{t.approver?.email || 'N/A'}</td>
-                                            <td className="px-6 py-4">
-                                                <span className={`px-2 py-1 text-[9px] font-bold rounded-full ${
-                                                    t.status === 'approved' ? 'bg-green-100 text-green-800' :
-                                                    t.status === 'rejected' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800'
-                                                }`}>
-                                                    {t.status.toUpperCase()}
-                                                </span>
-                                            </td>
-                                            <td className="px-6 py-4 text-[10px] text-gray-500">
-                                                {new Date(t.created_at).toLocaleString()}
-                                            </td>
-                                            <td className="px-6 py-4 text-xs font-medium">
-                                                <Link href={route('transfers.show', t.id)} className="text-indigo-600 hover:text-indigo-900 font-bold">VIEW</Link>
-                                            </td>
-                                        </tr>
-                                    ))}
+                                         <tr key={`${t.is_mail ? 'm' : (t.is_ticket ? 't' : 'f')}-${t.id}`} className="hover:bg-gray-50 transition">
+                                             <td className="px-6 py-4">
+                                                 <span className={`px-2 py-0.5 text-[9px] font-bold rounded ${
+                                                     t.is_mail ? 'bg-indigo-100 text-indigo-800' : 
+                                                     (t.is_ticket ? 'bg-orange-100 text-orange-800' : 'bg-blue-100 text-blue-800')
+                                                 }`}>
+                                                     {t.is_mail ? 'MAIL' : (t.is_ticket ? 'TICKET' : 'FILE')}
+                                                 </span>
+                                             </td>
+                                             <td className="px-6 py-4 text-xs font-medium text-gray-900">{t.sender_display || 'System'}</td>
+                                             <td className="px-6 py-4 text-xs text-gray-600">{t.receiver_display}</td>
+                                             <td className="px-6 py-4 text-xs text-gray-600">
+                                                 {t.is_mail ? (
+                                                     <div className="flex flex-col gap-0.5">
+                                                         {t.trackers?.map(tr => (
+                                                             <span key={tr.id} className="text-[8px] text-gray-400">{tr.name}</span>
+                                                         ))}
+                                                         {(!t.trackers || t.trackers.length === 0) && 'N/A'}
+                                                     </div>
+                                                 ) : (t.approver?.email || 'N/A')}
+                                             </td>
+                                             <td className="px-6 py-4">
+                                                 <span className={`px-2 py-1 text-[9px] font-bold rounded-full ${
+                                                     t.status === 'approved' ? 'bg-green-100 text-green-800' :
+                                                     t.status === 'rejected' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800'
+                                                 }`}>
+                                                     {t.status?.toUpperCase() || 'PENDING'}
+                                                 </span>
+                                             </td>
+                                             <td className="px-6 py-4 text-[10px] text-gray-500">
+                                                 {new Date(t.created_at).toLocaleString()}
+                                             </td>
+                                             <td className="px-6 py-4 text-xs font-medium">
+                                                 <Link 
+                                                     href={t.is_mail ? route('mails.show', t.id) : route('transfers.show', t.id)} 
+                                                     className="text-indigo-600 hover:text-indigo-900 font-bold"
+                                                 >
+                                                     VIEW
+                                                 </Link>
+                                             </td>
+                                         </tr>
+                                     ))}
                                     {transfers.length === 0 && (
                                         <tr>
                                             <td colSpan="7" className="px-6 py-8 text-center text-gray-500 text-sm italic">No transfers found in the system.</td>

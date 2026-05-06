@@ -10,7 +10,7 @@ export default function ComposeMail({ categories }) {
     });
     const [attachments, setAttachments] = useState([]);
     const [category_id, setCategoryId] = useState('');
-    
+
     const [loading, setLoading] = useState(false);
     const [errors, setErrors] = useState({});
     const [successMessage, setSuccessMessage] = useState('');
@@ -43,7 +43,7 @@ export default function ComposeMail({ categories }) {
         e.preventDefault();
         setSuccessMessage('');
         setErrorMessage('');
-        
+
         if (!validate()) return;
 
         setLoading(true);
@@ -54,11 +54,11 @@ export default function ComposeMail({ categories }) {
         payload.append('subject', formData.subject);
         payload.append('approval_table_name', formData.approval_table_name);
         payload.append('body', formData.body);
-        
+
         attachments.forEach(file => {
             payload.append('attachments[]', file);
         });
-        
+
         payload.append('category_id', category_id);
 
         try {
@@ -66,7 +66,7 @@ export default function ComposeMail({ categories }) {
             const response = await window.axios.post('/api/send-files', payload, {
                 headers: { 'Content-Type': 'multipart/form-data' }
             });
-            
+
             if (response.status === 201) {
                 setSuccessMessage(response.data.message || 'Mail sent and submitted for approval.');
                 setFormData({ receiver: '', cc: '', subject: '', body: '', approval_table_name: '' });
@@ -85,13 +85,13 @@ export default function ComposeMail({ categories }) {
     return (
         <div className="max-w-4xl mx-auto bg-white p-6 rounded-xl shadow-sm border border-gray-100">
             <h2 className="text-xl font-bold text-gray-800 mb-6">Compose Mail for Approval</h2>
-            
+
             {successMessage && (
                 <div className="mb-6 p-4 bg-emerald-50 text-emerald-600 rounded-xl font-medium border border-emerald-100">
                     {successMessage}
                 </div>
             )}
-            
+
             {errorMessage && (
                 <div className="mb-6 p-4 bg-red-50 text-red-600 rounded-xl font-medium border border-red-100">
                     {errorMessage}
@@ -102,8 +102,8 @@ export default function ComposeMail({ categories }) {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
                         <label className="block text-sm font-bold text-gray-700 mb-1">To (Receiver) *</label>
-                        <input 
-                            type="email" 
+                        <input
+                            type="email"
                             name="receiver"
                             value={formData.receiver}
                             onChange={handleChange}
@@ -114,8 +114,8 @@ export default function ComposeMail({ categories }) {
                     </div>
                     <div>
                         <label className="block text-sm font-bold text-gray-700 mb-1">CC (Optional)</label>
-                        <input 
-                            type="text" 
+                        <input
+                            type="text"
                             name="cc"
                             value={formData.cc}
                             onChange={handleChange}
@@ -127,8 +127,8 @@ export default function ComposeMail({ categories }) {
 
                 <div>
                     <label className="block text-sm font-bold text-gray-700 mb-1">Subject *</label>
-                    <input 
-                        type="text" 
+                    <input
+                        type="text"
                         name="subject"
                         value={formData.subject}
                         onChange={handleChange}
@@ -140,8 +140,8 @@ export default function ComposeMail({ categories }) {
 
                 <div>
                     <label className="block text-sm font-bold text-gray-700 mb-1">Approval Table Name *</label>
-                    <input 
-                        type="text" 
+                    <input
+                        type="text"
                         name="approval_table_name"
                         value={formData.approval_table_name}
                         onChange={handleChange}
@@ -153,7 +153,7 @@ export default function ComposeMail({ categories }) {
 
                 <div>
                     <label className="block text-sm font-bold text-gray-700 mb-1">Body *</label>
-                    <textarea 
+                    <textarea
                         name="body"
                         value={formData.body}
                         onChange={handleChange}
@@ -166,9 +166,9 @@ export default function ComposeMail({ categories }) {
 
                 <div>
                     <label className="block text-sm font-bold text-gray-700 mb-1">Attachments (Optional)</label>
-                    <input 
+                    <input
                         id="attachments_input"
-                        type="file" 
+                        type="file"
                         multiple
                         onChange={handleFileChange}
                         className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-bold file:bg-indigo-50 file:text-indigo-600 hover:file:bg-indigo-100 transition"
@@ -179,7 +179,7 @@ export default function ComposeMail({ categories }) {
                     <h3 className="text-lg font-bold text-gray-800 mb-4">Approval Workflow</h3>
                     <div>
                         <label className="block text-sm font-bold text-gray-700 mb-1">Select Category *</label>
-                        <select 
+                        <select
                             value={category_id}
                             onChange={(e) => setCategoryId(e.target.value)}
                             className={`w-full rounded-xl border ${errors.category_id ? 'border-red-500' : 'border-gray-200'} focus:ring-indigo-500 focus:border-indigo-500`}
@@ -195,8 +195,8 @@ export default function ComposeMail({ categories }) {
                 </div>
 
                 <div className="pt-8 border-t border-gray-100 flex justify-end">
-                    <button 
-                        type="submit" 
+                    <button
+                        type="submit"
                         disabled={loading}
                         className="px-8 py-3 bg-indigo-600 text-white rounded-xl font-bold text-sm shadow-lg shadow-indigo-100 hover:bg-indigo-700 transition disabled:opacity-50 disabled:cursor-not-allowed uppercase tracking-widest"
                     >

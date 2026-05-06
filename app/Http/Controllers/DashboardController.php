@@ -27,9 +27,9 @@ class DashboardController extends Controller
         ];
 
         // 2. Combined Inbound Stats (Employees receiving from others)
-        $receivedTotal = \App\Models\FileRequest::where('receiver_id', $user->id)->count() + 
-                         \App\Models\TicketRequest::where('receiver_id', $user->id)->count() +
-                         \App\Models\SentMail::where('receiver', $user->email)->count();
+        $receivedTotal = \App\Models\FileRequest::where('receiver_id', $user->id)->where('status', 'approved')->count() + 
+                         \App\Models\TicketRequest::where('receiver_id', $user->id)->where('status', 'approved')->count() +
+                         \App\Models\SentMail::where('receiver', $user->email)->where('overall_status', 'approved')->count();
 
         // 3. Pending Approvals (Action Required)
         $pendingApprovalsCount = \App\Models\FileRequest::where('approver_id', $user->id)->where('status', 'pending')->count() +
@@ -65,25 +65,78 @@ class DashboardController extends Controller
     {
         $user = $request->user();
 
-        $receivedFiles = FileRequest::where('receiver_id', $user->id)->get();
-        $receivedTickets = TicketRequest::where('receiver_id', $user->id)->get();
+        // 1. Fetch Sent Items (Outbound)
+        $sentFiles = FileRequest::where('sender_id', $user->id)->get();
+        $sentTickets = TicketRequest::where('sender_id', $user->id)->get();
+        $sentMails = \App\Models\SentMail::where('sender_id', $user->id)->get();
+        
+        $sentTotal = $sentFiles->count() + $sentTickets->count() + $sentMails->count();
 
-        $receivedStats = [
-            'total' => $receivedFiles->count() + $receivedTickets->count(),
-            'pending_upload' => $receivedTickets->where('status', 'approved')->where('is_uploaded', false)->count(),
-            'downloadable' => $receivedFiles->where('status', 'approved')->count(),
-        ];
+        // 2. Fetch Received Items (Inbound) - Only Approved as per previous requirement
+        $receivedFiles = FileRequest::where('receiver_id', $user->id)->where('status', 'approved')->get();
+        $receivedTickets = TicketRequest::where('receiver_id', $user->id)->where('status', 'approved')->get();
+        $receivedMails = \App\Models\SentMail::where('receiver', $user->email)
+            ->where('overall_status', 'approved')
+            ->get();
+            
+        $receivedTotal = $receivedFiles->count() + $receivedTickets->count() + $receivedMails->count();
 
-        $recentLogs = $receivedFiles->concat($receivedTickets)->sortByDesc('updated_at')->take(10)->values()->map(function ($item) {
-            if ($item instanceof \App\Models\FileRequest && $item->status === 'approved' && $item->secure_token) {
-                $item->download_url = \Illuminate\Support\Facades\URL::signedRoute('transfers.download', ['id' => $item->id]);
+        $mapItem = function ($item) use ($user) {
+            $isTicket = $item instanceof \App\Models\TicketRequest;
+            $isMail = $item instanceof \App\Models\SentMail;
+            
+            // Determine if the current user is the sender or receiver
+            $isSender = false;
+            if ($isMail) {
+                $isSender = $item->sender_id === $user->id;
+                $item->status = $item->overall_status;
+                $item->is_mail = true;
+                $item->is_ticket = false;
+                
+                // Action Type logic
+                if (!$isSender) {
+                    $item->action_type = ($item->type === 'request') ? 'Upload' : 'Download';
+                } else {
+                    $item->action_type = 'Sent';
+                }
+            } else {
+                $isSender = $item->sender_id === $user->id;
+                $item->is_mail = false;
+                $item->is_ticket = $isTicket;
+                if (!$isTicket && $item->status === 'approved' && $item->secure_token) {
+                    $item->download_url = \Illuminate\Support\Facades\URL::signedRoute('transfers.download', ['id' => $item->id]);
+                }
+                
+                // Action Type logic
+                if (!$isSender) {
+                    $item->action_type = $isTicket ? 'Upload' : 'Download';
+                } else {
+                    $item->action_type = 'Sent';
+                }
             }
+            $item->is_outbound = $isSender;
             return $item;
-        });
-        $recentLogs->load(['sender:id,name']);
+        };
+
+        // Combine for Recent Activity Log
+        $allInbound = $receivedFiles->concat($receivedTickets)->concat($receivedMails);
+        $allOutbound = $sentFiles->concat($sentTickets)->concat($sentMails);
+
+        $recentLogs = $allInbound->concat($allOutbound)
+            ->sortByDesc('created_at')
+            ->take(10)
+            ->values()
+            ->map($mapItem);
+
+        // Load relationships conditionally to avoid errors on mixed collections
+        $recentLogs->filter(fn($i) => $i instanceof \App\Models\SentMail)->loadMissing(['sender:id,name']);
+        $recentLogs->filter(fn($i) => !($i instanceof \App\Models\SentMail))->loadMissing(['sender:id,name', 'receiver:id,name']);
 
         return Inertia::render('ExternalDashboard', [
-            'receivedStats' => $receivedStats,
+            'stats' => [
+                'sent_total' => $sentTotal,
+                'received_total' => $receivedTotal,
+            ],
             'recentLogs' => $recentLogs
         ]);
     }

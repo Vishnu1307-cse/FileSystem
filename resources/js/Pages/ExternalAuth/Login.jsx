@@ -37,7 +37,7 @@ export default function Login() {
 
         window.axios.post('/external/otp-verify', { email, otp })
             .then(response => {
-                window.location.href = '/external/inbox';
+                window.location.href = '/external/dashboard';
             })
             .catch(err => {
                 setError(err.response?.data?.message || 'Invalid OTP.');

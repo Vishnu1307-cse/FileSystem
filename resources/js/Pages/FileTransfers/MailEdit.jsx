@@ -6,6 +6,7 @@ import TextInput from '@/Components/TextInput';
 export default function MailEdit({ tracker, sentMail }) {
     const { data, setData, post, processing, errors } = useForm({
         subject: sentMail.subject,
+        cc: sentMail.cc || '',
         body: sentMail.body,
         removed_attachments: [],
         new_files: [],
@@ -118,6 +119,19 @@ export default function MailEdit({ tracker, sentMail }) {
                                 required
                             />
                             {errors.subject && <div className="text-red-500 text-xs mt-1">{errors.subject}</div>}
+                        </div>
+
+                        <div>
+                            <InputLabel htmlFor="cc" value="CC (Optional, comma separated)" />
+                            <TextInput
+                                id="cc"
+                                type="text"
+                                className="mt-1 block w-full bg-white border-gray-200"
+                                value={data.cc}
+                                onChange={(e) => setData('cc', e.target.value)}
+                                placeholder="example1@email.com, example2@email.com"
+                            />
+                            {errors.cc && <div className="text-red-500 text-xs mt-1">{errors.cc}</div>}
                         </div>
 
                         <div>

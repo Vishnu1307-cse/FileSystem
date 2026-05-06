@@ -11,6 +11,8 @@ class SiteSetting extends Model
         'api_key',
         'cloudflare_url',
         'is_external_api_enabled',
+        'file_expiration_days',
+        'file_expiration_hours',
     ];
 
     protected $casts = [
