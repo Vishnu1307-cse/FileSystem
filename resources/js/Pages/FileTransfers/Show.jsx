@@ -58,10 +58,10 @@ export default function Show({ transfer, file_info, is_ticket }) {
                                     <div className="group p-4 bg-gray-50 rounded-2xl border border-transparent hover:border-indigo-100 transition">
                                         <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-2">Originating Party</label>
                                         <div className="flex items-center gap-3">
-                                            <div className="h-8 w-8 rounded-lg bg-indigo-600 text-white flex items-center justify-center font-bold text-xs">{transfer.sender.name.charAt(0)}</div>
+                                            <div className="h-8 w-8 rounded-lg bg-indigo-600 text-white flex items-center justify-center font-bold text-xs">{transfer.sender?.name?.charAt(0) || '?'}</div>
                                             <div>
-                                                <div className="text-sm font-bold text-gray-800">{transfer.sender.name}</div>
-                                                <div className="text-[10px] text-gray-400 font-medium">{transfer.sender.email}</div>
+                                                <div className="text-sm font-bold text-gray-800">{transfer.sender?.name || 'N/A'}</div>
+                                                <div className="text-[10px] text-gray-400 font-medium">{transfer.sender?.email || 'N/A'}</div>
                                             </div>
                                         </div>
                                     </div>
@@ -69,10 +69,10 @@ export default function Show({ transfer, file_info, is_ticket }) {
                                     <div className="group p-4 bg-gray-50 rounded-2xl border border-transparent hover:border-indigo-100 transition">
                                         <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-2">Target Recipient</label>
                                         <div className="flex items-center gap-3">
-                                            <div className="h-8 w-8 rounded-lg bg-gray-200 text-gray-500 flex items-center justify-center font-bold text-xs">{transfer.receiver.name.charAt(0)}</div>
+                                            <div className="h-8 w-8 rounded-lg bg-gray-200 text-gray-500 flex items-center justify-center font-bold text-xs">{transfer.receiver?.name?.charAt(0) || '?'}</div>
                                             <div>
-                                                <div className="text-sm font-bold text-gray-800">{transfer.receiver.name}</div>
-                                                <div className="text-[10px] text-gray-400 font-medium">{transfer.receiver.email}</div>
+                                                <div className="text-sm font-bold text-gray-800">{transfer.receiver?.name || 'N/A'}</div>
+                                                <div className="text-[10px] text-gray-400 font-medium">{transfer.receiver?.email || 'N/A'}</div>
                                             </div>
                                         </div>
                                     </div>
@@ -113,7 +113,7 @@ export default function Show({ transfer, file_info, is_ticket }) {
 
                             <div className="mt-12 pt-8 border-t border-gray-50 flex justify-between items-center">
                                 <Link
-                                    href={auth.user.role === 'admin' ? route('admin.transfers') : route('inbox.index')}
+                                    href={auth.user.role === 'admin' ? route('manage.transfers') : route('inbox.index')}
                                     className="text-[10px] font-black text-gray-400 hover:text-indigo-600 uppercase tracking-widest transition"
                                 >
                                     ← Return to Workflow
@@ -145,14 +145,14 @@ export default function Show({ transfer, file_info, is_ticket }) {
                                         <div className="h-8 w-8 rounded-full bg-indigo-600 border-4 border-white shadow-sm z-10 shrink-0" />
                                         <div>
                                             <div className="text-xs font-bold text-gray-800">Workflow Initiated</div>
-                                            <div className="text-[10px] text-gray-400 font-medium">By {transfer.sender.name}</div>
+                                            <div className="text-[10px] text-gray-400 font-medium">By {transfer.sender?.name || 'N/A'}</div>
                                         </div>
                                     </div>
                                     <div className="text-[10px] text-gray-300 font-bold uppercase">{new Date(transfer.created_at).toLocaleDateString()}</div>
                                 </div>
 
                                 {/* Multi-stage Approvals from Sequences */}
-                                {transfer.category?.sequences?.sort((a, b) => a.order_position - b.order_position).map((sequence) => {
+                                {[...(transfer.category?.sequences || [])].sort((a, b) => a.order_position - b.order_position).map((sequence) => {
                                     const log = transfer.approval_logs?.find(l => l.step === sequence.order_position);
                                     const isCompleted = !!log;
                                     const isCurrent = transfer.status === 'pending' && transfer.current_step === sequence.order_position;

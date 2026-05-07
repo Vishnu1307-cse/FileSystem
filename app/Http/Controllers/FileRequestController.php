@@ -210,8 +210,27 @@ class FileRequestController extends Controller
         $transfer = FileRequest::with(['sender', 'receiver', 'approver', 'approvalLogs.user', 'category.sequences.user'])->find($id) 
                  ?? TicketRequest::with(['sender', 'receiver', 'approver', 'approvalLogs.user', 'category.sequences.user'])->findOrFail($id);
         
+        $isTicket = $transfer instanceof TicketRequest;
+        $file_info = null;
+
+        if ($transfer instanceof FileRequest && $transfer->file_path) {
+            $file_info = [
+                'original_name' => basename($transfer->file_path),
+                'size' => $transfer->file_size ?? 0,
+                'mime_type' => $transfer->mime_type ?? 'application/octet-stream'
+            ];
+        } else if ($transfer instanceof TicketRequest && $transfer->uploaded_file_path) {
+            $file_info = [
+                'original_name' => basename($transfer->uploaded_file_path),
+                'size' => $transfer->file_size ?? 0,
+                'mime_type' => $transfer->mime_type ?? 'application/octet-stream'
+            ];
+        }
+
         return Inertia::render('FileTransfers/Show', [
-            'transfer' => $transfer
+            'transfer' => $transfer,
+            'file_info' => $file_info,
+            'is_ticket' => $isTicket
         ]);
     }
 

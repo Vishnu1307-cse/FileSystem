@@ -1,8 +1,37 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, usePage } from '@inertiajs/react';
+import { useState } from 'react';
 
 export default function Sent({ sent }) {
     const { auth } = usePage().props;
+    const [searchQuery, setSearchQuery] = useState('');
+    const [sortBy, setSortBy] = useState('newest');
+
+    const filteredSent = (sent || []).filter(item => {
+        const query = searchQuery.toLowerCase();
+        return (
+            (item.subject || '').toLowerCase().includes(query) ||
+            (item.message || item.body || '').toLowerCase().includes(query) ||
+            (item.receiver?.name || '').toLowerCase().includes(query) ||
+            (item.receiver?.email || '').toLowerCase().includes(query) ||
+            (item.is_ticket ? 'ticket' : (item.is_mail ? 'mail' : 'file')).includes(query)
+        );
+    }).sort((a, b) => {
+        if (sortBy === 'newest') {
+            return new Date(b.created_at) - new Date(a.created_at);
+        }
+        if (sortBy === 'oldest') {
+            return new Date(a.created_at) - new Date(b.created_at);
+        }
+        if (sortBy === 'alphabetical_asc') {
+            return (a.subject || '').localeCompare(b.subject || '');
+        }
+        if (sortBy === 'alphabetical_desc') {
+            return (b.subject || '').localeCompare(a.subject || '');
+        }
+        return 0;
+    });
+
     const renderTable = (items, title, emptyMsg) => (
         <div className="card p-0 overflow-hidden mb-10 border border-gray-100 shadow-xl">
             <div className="px-6 py-4 bg-gray-50 border-b border-gray-100 flex justify-between items-center">
@@ -92,7 +121,7 @@ export default function Sent({ sent }) {
                 </table>
                 {items.length === 0 && (
                     <div className="py-20 text-center">
-                        <div className="text-gray-200 text-6xl mb-4 flex justify-center">📥</div>
+                        <div className="text-gray-200 text-6xl mb-4 flex justify-center">📤</div>
                         <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{emptyMsg}</p>
                     </div>
                 )}
@@ -104,7 +133,32 @@ export default function Sent({ sent }) {
         <AuthenticatedLayout header="My Transaction History">
             <Head title="Sent Items" />
             <div className="mx-auto w-full px-4 sm:px-6 lg:px-8 py-6">
-                {renderTable(sent, "My Sent Items", "You haven't initiated any transfers.")}
+                <div className="mb-6 flex flex-col sm:flex-row gap-4 items-center justify-between bg-white p-4 rounded-2xl border border-gray-100 shadow-sm animate-fade-in">
+                    <div className="relative w-full sm:w-72">
+                        <input
+                            type="text"
+                            placeholder="Search sent items..."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-xl text-xs font-semibold focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+                        />
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs">🔍</span>
+                    </div>
+                    <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+                        <span className="text-[10px] font-black uppercase text-gray-400 whitespace-nowrap">Sort By:</span>
+                        <select
+                            value={sortBy}
+                            onChange={(e) => setSortBy(e.target.value)}
+                            className="w-full sm:w-48 py-2 px-3 border border-gray-200 rounded-xl text-xs font-semibold focus:outline-none focus:border-indigo-500"
+                        >
+                            <option value="newest">Newest First</option>
+                            <option value="oldest">Oldest First</option>
+                            <option value="alphabetical_asc">Alphabetical (A-Z)</option>
+                            <option value="alphabetical_desc">Alphabetical (Z-A)</option>
+                        </select>
+                    </div>
+                </div>
+                {renderTable(filteredSent, "My Sent Items", "You haven't initiated any transfers.")}
             </div>
         </AuthenticatedLayout>
     );

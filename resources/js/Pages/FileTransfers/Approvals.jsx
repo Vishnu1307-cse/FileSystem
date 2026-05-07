@@ -1,9 +1,12 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, useForm, usePage, Link } from '@inertiajs/react';
+import { useState } from 'react';
 
 export default function Approvals({ approvals }) {
     const { props } = usePage();
     const { post, processing } = useForm();
+    const [searchQuery, setSearchQuery] = useState('');
+    const [sortBy, setSortBy] = useState('newest');
 
     const handleApprove = async (approval) => {
         if (approval.source_type === 'sent_mail') {
@@ -45,6 +48,35 @@ export default function Approvals({ approvals }) {
         }
     };
 
+    const filteredApprovals = (approvals || []).filter(item => {
+        const query = searchQuery.toLowerCase();
+        const senderName = (item.sender?.name || '').toLowerCase();
+        const receiverName = (item.source_type === 'sent_mail' ? item.receiver_email : (item.receiver?.name || 'External')).toLowerCase();
+        const categoryName = (item.source_type === 'sent_mail' ? item.category_name : (item.category?.name || 'Standard')).toLowerCase();
+        const subject = (item.subject || '').toLowerCase();
+        
+        return (
+            subject.includes(query) ||
+            senderName.includes(query) ||
+            receiverName.includes(query) ||
+            categoryName.includes(query)
+        );
+    }).sort((a, b) => {
+        if (sortBy === 'newest') {
+            return new Date(b.created_at) - new Date(a.created_at);
+        }
+        if (sortBy === 'oldest') {
+            return new Date(a.created_at) - new Date(b.created_at);
+        }
+        if (sortBy === 'alphabetical_asc') {
+            return (a.subject || '').localeCompare(b.subject || '');
+        }
+        if (sortBy === 'alphabetical_desc') {
+            return (b.subject || '').localeCompare(a.subject || '');
+        }
+        return 0;
+    });
+
     return (
         <AuthenticatedLayout
             header="Pending Determination Queue"
@@ -59,6 +91,32 @@ export default function Approvals({ approvals }) {
                     </div>
                 )}
                 
+                <div className="mb-6 flex flex-col sm:flex-row gap-4 items-center justify-between bg-white p-4 rounded-2xl border border-gray-100 shadow-sm animate-fade-in">
+                    <div className="relative w-full sm:w-72">
+                        <input
+                            type="text"
+                            placeholder="Search approvals..."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-xl text-xs font-semibold focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+                        />
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs">🔍</span>
+                    </div>
+                    <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+                        <span className="text-[10px] font-black uppercase text-gray-400 whitespace-nowrap">Sort By:</span>
+                        <select
+                            value={sortBy}
+                            onChange={(e) => setSortBy(e.target.value)}
+                            className="w-full sm:w-48 py-2 px-3 border border-gray-200 rounded-xl text-xs font-semibold focus:outline-none focus:border-indigo-500"
+                        >
+                            <option value="newest">Newest First</option>
+                            <option value="oldest">Oldest First</option>
+                            <option value="alphabetical_asc">Alphabetical (A-Z)</option>
+                            <option value="alphabetical_desc">Alphabetical (Z-A)</option>
+                        </select>
+                    </div>
+                </div>
+
                 <div className="card p-0 overflow-hidden shadow-2xl border border-gray-100 bg-white">
                     <div className="px-8 py-6 border-b border-gray-50 flex justify-between items-center bg-gray-50/50">
                         <div>
@@ -67,7 +125,7 @@ export default function Approvals({ approvals }) {
                         </div>
                         <div className="flex items-center gap-2">
                             <span className="h-2 w-2 rounded-full bg-yellow-400 animate-pulse" />
-                            <span className="text-[10px] text-gray-400 font-black uppercase tracking-widest">Queue depth: {approvals.length}</span>
+                            <span className="text-[10px] text-gray-400 font-black uppercase tracking-widest">Queue depth: {filteredApprovals.length}</span>
                         </div>
                     </div>
 
@@ -82,7 +140,7 @@ export default function Approvals({ approvals }) {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-50">
-                                {approvals.map((approval) => (
+                                {filteredApprovals.map((approval) => (
                                     <tr key={`${approval.source_type}-${approval.id}`} className="hover:bg-indigo-50/30 transition-all duration-300 group">
                                         <td className="px-8 py-6">
                                             <div className="flex flex-col gap-2">
@@ -166,7 +224,7 @@ export default function Approvals({ approvals }) {
                                         </td>
                                     </tr>
                                 ))}
-                                {approvals.length === 0 && (
+                                {filteredApprovals.length === 0 && (
                                     <tr>
                                         <td colSpan="5" className="px-8 py-32 text-center">
                                             <div className="text-indigo-600 mb-6 flex justify-center opacity-20">
